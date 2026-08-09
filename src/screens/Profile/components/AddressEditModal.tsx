@@ -10,6 +10,8 @@ import { Keyboard, Pressable, StyleSheet, Text, View, Switch } from 'react-nativ
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { SavedAddress } from '../constants';
 
+import { useLocation } from '@/context/LocationContext';
+
 interface AddressEditModalProps {
   address: SavedAddress | null;
   onSave: (updatedAddress: SavedAddress) => void;
@@ -22,22 +24,28 @@ type Tag = typeof TAGS[number];
 export const AddressEditModal = forwardRef<BottomSheetModal, AddressEditModalProps>(
   function AddressEditModal({ address, onSave, onClose }, ref) {
     const insets = useSafeAreaInsets();
+    const location = useLocation();
     
     // Form state
     const [tag, setTag] = useState<Tag>('Home');
     const [fullAddress, setFullAddress] = useState('');
-    const [landmark, setLandmark] = useState('');
+    const [postalCode, setPostalCode] = useState('');
     const [isDefault, setIsDefault] = useState(false);
 
     // When the address prop changes, pre-fill the form
     useEffect(() => {
-      if (address) {
-        setTag(address.label);
-        setFullAddress(address.address);
-        setIsDefault(address.isDefault);
-        setLandmark(''); // We don't have landmark in our mock data yet, but good for future
+      if (address && address.id !== 'new') {
+        setTag((address.label as Tag) || 'Home');
+        setFullAddress(address.completeAddress || (address as any).address || '');
+        setIsDefault(address.isDefault ?? false);
+        setPostalCode(address.postalCode || location.address?.postalCode || '');
+      } else {
+        setTag((address?.label as Tag) || 'Home');
+        setFullAddress('');
+        setIsDefault(false);
+        setPostalCode(location.address?.postalCode || '');
       }
-    }, [address]);
+    }, [address, location.address?.postalCode]);
 
     const snapPoints = useMemo(() => ['80%', '95%'], []);
 
@@ -54,15 +62,21 @@ export const AddressEditModal = forwardRef<BottomSheetModal, AddressEditModalPro
     );
 
     const handleSave = () => {
-      if (!address || !fullAddress.trim()) return;
+      if (!fullAddress.trim()) return;
       
       Keyboard.dismiss();
       onSave({
-        ...address,
+        id: address?.id || 'new',
         label: tag,
+        completeAddress: fullAddress.trim(),
         address: fullAddress.trim(),
+        postalCode: postalCode.trim() || undefined,
+        city: address?.city || location.address?.city || undefined,
+        state: address?.state || location.address?.state || undefined,
+        latitude: address?.latitude ?? location.coordinates?.latitude ?? undefined,
+        longitude: address?.longitude ?? location.coordinates?.longitude ?? undefined,
         isDefault,
-      });
+      } as any);
     };
 
     return (
@@ -121,14 +135,16 @@ export const AddressEditModal = forwardRef<BottomSheetModal, AddressEditModalPro
             </View>
 
             <View style={styles.fieldGroup}>
-              <Text style={styles.label}>Nearby Landmark (Optional)</Text>
+              <Text style={styles.label}>Postal Code / Pincode</Text>
               <View style={styles.inputWrap}>
                 <BottomSheetTextInput
                   style={styles.input}
-                  placeholder="e.g. Near Apollo Hospital"
+                  placeholder="e.g. 380013"
                   placeholderTextColor={Brand.textMuted}
-                  value={landmark}
-                  onChangeText={setLandmark}
+                  value={postalCode}
+                  onChangeText={setPostalCode}
+                  keyboardType="numeric"
+                  maxLength={6}
                 />
               </View>
             </View>

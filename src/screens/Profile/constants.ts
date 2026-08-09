@@ -87,12 +87,8 @@ export interface ActiveBooking {
 
 // ─── Saved Address ────────────────────────────────────────────────────────────
 
-export interface SavedAddress {
-  id: string;
-  label: 'Home' | 'Office' | 'Other';
-  address: string;
-  isDefault: boolean;
-}
+import { SavedAddress } from '@/types/address';
+export type { SavedAddress };
 
 // ─── Stats / Actions / Settings ───────────────────────────────────────────────
 
@@ -178,20 +174,7 @@ export const MOCK_BOOKINGS: BookingRecord[] = [
   },
 ];
 
-export const MOCK_ADDRESSES: SavedAddress[] = [
-  {
-    id: 'addr_home',
-    label: 'Home',
-    address: 'Add your home address for quicker bookings.',
-    isDefault: true,
-  },
-  {
-    id: 'addr_office',
-    label: 'Office',
-    address: 'Add your office address for faster service delivery.',
-    isDefault: false,
-  },
-];
+export const MOCK_ADDRESSES: SavedAddress[] = [];
 
 export const MOCK_ACTIVE_BOOKING: ActiveBooking = {
   id: 'ab_001',

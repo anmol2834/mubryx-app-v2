@@ -12,6 +12,7 @@ import {
     type PermissionStatus,
     type RecentLocation,
 } from '@/services/locationService';
+import { addressService } from '@/services/addressService';
 import { useAuthStore } from '@/store/authStore';
 import React, {
     createContext,
@@ -234,13 +235,28 @@ export const LocationProvider = memo(function LocationProvider({
     // *** Dispatch IMMEDIATELY — modal closes right away, no waiting for storage ***
     dispatch({ type: 'LOCATION_CONFIRMED', coordinates: coords, address });
 
-    // Storage writes happen in background after UI has already updated
+    // Storage writes & backend database sync happen in background after UI has already updated
     try {
       await persistLocation(coords, address);
       await saveRecentLocation(coords, address);
       const recents = await loadRecentLocations();
       if (mountedRef.current) {
         dispatch({ type: 'RECENTS_UPDATED', recents });
+      }
+
+      // Sync GPS coordinates & city/state to database default address
+      const authUser = useAuthStore.getState().user;
+      if (authUser?.id) {
+        const defaultRes = await addressService.getDefaultAddress();
+        if (defaultRes.ok && defaultRes.data) {
+          await addressService.updateAddress(defaultRes.data.id, {
+            latitude: coords.latitude,
+            longitude: coords.longitude,
+            city: address.city || defaultRes.data.city || undefined,
+            state: address.state || defaultRes.data.state || undefined,
+            postalCode: address.postalCode || defaultRes.data.postalCode || undefined,
+          });
+        }
       }
     } catch {
       // Storage failure is non-fatal — location is already set in state
@@ -261,6 +277,21 @@ export const LocationProvider = memo(function LocationProvider({
       await saveRecentLocation(coords, address);
       const recents = await loadRecentLocations();
       if (mountedRef.current) dispatch({ type: 'RECENTS_UPDATED', recents });
+
+      // Sync GPS coordinates & city/state to database default address
+      const authUser = useAuthStore.getState().user;
+      if (authUser?.id) {
+        const defaultRes = await addressService.getDefaultAddress();
+        if (defaultRes.ok && defaultRes.data) {
+          await addressService.updateAddress(defaultRes.data.id, {
+            latitude: coords.latitude,
+            longitude: coords.longitude,
+            city: address.city || defaultRes.data.city || undefined,
+            state: address.state || defaultRes.data.state || undefined,
+            postalCode: address.postalCode || defaultRes.data.postalCode || undefined,
+          });
+        }
+      }
     } catch {}
   }, [state.pendingCoordinates, state.pendingAddress]);
 

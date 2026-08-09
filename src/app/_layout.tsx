@@ -22,7 +22,6 @@ function AuthenticatedLocationModal() {
   return <LocationSearchModal />;
 }
 
-
 export default function RootLayout() {
   const hydrateSession = useAuthStore(s => s.hydrateSession);
   

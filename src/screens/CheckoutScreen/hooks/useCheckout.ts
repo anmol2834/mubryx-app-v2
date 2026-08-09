@@ -1,8 +1,9 @@
 import { useCartQuery } from '@/hooks/queries/useCartQuery';
 import { useCartMutations } from '@/hooks/mutations/useCartMutations';
+import { useAddressesQuery } from '@/hooks/queries/useAddressesQuery';
 import { useCheckoutStore } from '@/hooks/store/useCheckoutStore';
-import { useLocation } from '@/context/LocationContext';
-import { useCallback, useState } from 'react';
+import { SavedAddress } from '@/types/address';
+import { useCallback, useMemo, useState } from 'react';
 
 export type ScheduleMode = 'asap' | 'scheduled';
 export type PaymentMethod =
@@ -29,7 +30,26 @@ const MAX_NOTE_CHARS = 200;
 export function useCheckout() {
   const { data: cart } = useCartQuery();
   const { applyCoupon: applyCouponMutation, removeCoupon: removeCouponMutation } = useCartMutations();
-  const location = useLocation();
+  const { data: addresses = [], isLoading: addressesLoading } = useAddressesQuery();
+
+  // ── Address Selection ─────────────────────────────────────────────────────
+  const defaultAddress = useMemo(() => {
+    return addresses.find((a) => a.isDefault) || addresses[0] || null;
+  }, [addresses]);
+
+  const [selectedAddressIdOverride, setSelectedAddressIdOverride] = useState<string | null>(null);
+
+  const selectedAddress = useMemo<SavedAddress | null>(() => {
+    if (selectedAddressIdOverride) {
+      const found = addresses.find((a) => a.id === selectedAddressIdOverride);
+      if (found) return found;
+    }
+    return defaultAddress;
+  }, [addresses, selectedAddressIdOverride, defaultAddress]);
+
+  const selectAddress = useCallback((addr: SavedAddress) => {
+    setSelectedAddressIdOverride(addr.id);
+  }, []);
 
   // ── Schedule ──────────────────────────────────────────────────────────────
   const [scheduleMode, setScheduleMode] = useState<ScheduleMode>('asap');
@@ -105,9 +125,11 @@ export function useCheckout() {
     grandTotal: summary.total,
     appliedCoupon: cart?.appliedCoupon || null,
 
-    // Location
-    address: location.address,
-    openLocationSelector: location.openLocationSelector,
+    // Service Address
+    addresses,
+    addressesLoading,
+    address: selectedAddress,
+    selectAddress,
 
     // Schedule
     scheduleMode,

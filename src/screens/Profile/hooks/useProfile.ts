@@ -1,4 +1,6 @@
 import { useAuthStore } from '@/store/authStore';
+import { useAddressesQuery } from '@/hooks/queries/useAddressesQuery';
+import { useAddressMutations } from '@/hooks/mutations/useAddressMutations';
 import { useCallback, useMemo, useState } from 'react';
 import {
     MOCK_ACTIVE_BOOKING,
@@ -50,14 +52,16 @@ export function useProfile(onNavigateToTrack?: () => void): ProfileState & Profi
   const [editingAddressId, setEditingAddressId] = useState<string | null>(null);
   const [localName, setLocalName] = useState<string | null>(null);
   
-  // Create a local copy of addresses so we can update them in-memory
-  const [addresses, setAddresses] = useState<SavedAddress[]>(MOCK_ADDRESSES);
+  const { data: addresses = [] } = useAddressesQuery();
+  const { createAddress, updateAddress, setDefaultAddress } = useAddressMutations();
 
   const onEditProfile = useCallback(() => {}, []);
   const onNotifications = useCallback(() => {}, []);
   const onSettings = useCallback(() => {}, []);
   const onSettingsRowPress = useCallback((_id: string) => {}, []);
-  const onAddAddress = useCallback(() => {}, []);
+  const onAddAddress = useCallback(() => {
+    setEditingAddressId('new');
+  }, []);
   
   const onUpdateName = useCallback((name: string) => {
     setLocalName(name);
@@ -71,24 +75,40 @@ export function useProfile(onNavigateToTrack?: () => void): ProfileState & Profi
     setEditingAddressId(null);
   }, []);
 
-  const onSaveAddress = useCallback((updatedAddress: SavedAddress) => {
-    setAddresses(prev => prev.map(addr => {
-      if (addr.id === updatedAddress.id) {
-        return updatedAddress;
-      }
-      if (updatedAddress.isDefault) {
-        return { ...addr, isDefault: false };
-      }
-      return addr;
-    }));
-  }, []);
+  const onSaveAddress = useCallback((updatedAddress: any) => {
+    if (updatedAddress.id === 'new' || !updatedAddress.id) {
+      createAddress.mutate({
+        label: updatedAddress.label || 'Home',
+        completeAddress: updatedAddress.completeAddress || updatedAddress.address,
+        postalCode: updatedAddress.postalCode,
+        city: updatedAddress.city,
+        state: updatedAddress.state,
+        latitude: updatedAddress.latitude,
+        longitude: updatedAddress.longitude,
+        landmark: updatedAddress.landmark,
+        isDefault: updatedAddress.isDefault,
+      });
+    } else {
+      updateAddress.mutate({
+        id: updatedAddress.id,
+        payload: {
+          label: updatedAddress.label,
+          completeAddress: updatedAddress.completeAddress || updatedAddress.address,
+          postalCode: updatedAddress.postalCode,
+          city: updatedAddress.city,
+          state: updatedAddress.state,
+          latitude: updatedAddress.latitude,
+          longitude: updatedAddress.longitude,
+          landmark: updatedAddress.landmark,
+          isDefault: updatedAddress.isDefault,
+        },
+      });
+    }
+  }, [createAddress, updateAddress]);
 
   const onSetDefaultAddress = useCallback((id: string) => {
-    setAddresses(prev => prev.map(addr => ({
-      ...addr,
-      isDefault: addr.id === id
-    })));
-  }, []);
+    setDefaultAddress.mutate(id);
+  }, [setDefaultAddress]);
 
   const onBookingPress = useCallback((_b: BookingRecord) => {}, []);
 

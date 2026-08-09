@@ -1,5 +1,6 @@
 import { Brand, Radius, Shadow, Spacing, Typography } from '@/constants/brand';
 import { useCategoriesQuery } from '@/hooks/queries/useCategoriesQuery';
+import { getCategoryAssetSource } from '@/utils/categoryImages';
 import { useRouter } from 'expo-router';
 import { memo, useCallback, useMemo } from 'react';
 import { Dimensions, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -17,6 +18,11 @@ const ApplianceCard = memo(function ApplianceCard({
   onPress: (item: any) => void;
 }) {
   const handlePress = useCallback(() => onPress(item), [item, onPress]);
+  const imageSource = useMemo(
+    () => getCategoryAssetSource(item.image, item.slug, item.name),
+    [item.image, item.slug, item.name]
+  );
+
   return (
     <View style={styles.cardWrap}>
       <View style={styles.cardClip}>
@@ -24,9 +30,9 @@ const ApplianceCard = memo(function ApplianceCard({
           style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
           onPress={handlePress}
           android_ripple={null}
-          accessibilityLabel={`${item.name} starting at ${item.price}`}>
+          accessibilityLabel={`${item.name} service`}>
           <View style={[styles.imageArea, { backgroundColor: item.bgColor }]}>
-            <Image source={{ uri: item.image }} style={styles.image} resizeMode="cover" />
+            <Image source={imageSource} style={styles.image} resizeMode="cover" />
           </View>
           <View style={styles.info}>
             <Text style={styles.name} numberOfLines={1}>{item.name}</Text>

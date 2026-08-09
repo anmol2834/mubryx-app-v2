@@ -5,9 +5,10 @@ import {
   useBookingFlow,
 } from '@/features/booking-flow';
 import { useRouter } from 'expo-router';
-import { useCallback, useState } from 'react';
-import { ScrollView, StatusBar, StyleSheet, Text, View } from 'react-native';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Alert, ScrollView, StatusBar, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import type { BottomSheetModal } from '@gorhom/bottom-sheet';
 import { AddressCard } from './components/AddressCard';
 import { BookingNotes } from './components/BookingNotes';
 import { BottomBookingBar } from './components/BottomBookingBar';
@@ -18,6 +19,10 @@ import { ScheduleCard, ScheduleSheet } from './components/ScheduleSelector';
 import { ServiceList } from './components/ServiceList';
 import { useCartQuery } from '@/hooks/queries/useCartQuery';
 import { useCartMutations } from '@/hooks/mutations/useCartMutations';
+import { useAddressMutations } from '@/hooks/mutations/useAddressMutations';
+import { SavedAddressSelectorSheet } from '@/components/address/SavedAddressSelectorSheet';
+import { AddressEditModal } from '@/screens/Profile/components/AddressEditModal';
+import { SavedAddress } from '@/types/address';
 import { useCheckout } from './hooks/useCheckout';
 
 const SectionGap = () => <View style={styles.sectionGap} />;
@@ -30,10 +35,62 @@ export default function CheckoutScreen() {
   const insets = useSafeAreaInsets();
   const checkout = useCheckout();
   const { data: cart } = useCartQuery();
-  const { removeItem, checkout: checkoutMutation } = useCartMutations();
+  const { removeItem } = useCartMutations();
+  const { createAddress, setDefaultAddress } = useAddressMutations();
 
   const [sheetVisible, setSheetVisible] = useState(false);
   const bookingFlow = useBookingFlow();
+
+  const addressSelectorRef = useRef<BottomSheetModal>(null);
+  const addressEditRef = useRef<BottomSheetModal>(null);
+
+  // Automatically open Edit Address modal on mount if no address exists
+  useEffect(() => {
+    if (!checkout.addressesLoading && (!checkout.addresses || checkout.addresses.length === 0)) {
+      const timer = setTimeout(() => {
+        addressEditRef.current?.present();
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [checkout.addressesLoading, checkout.addresses]);
+
+  const handleOpenAddressSelector = useCallback(() => {
+    addressSelectorRef.current?.present();
+  }, []);
+
+  const handleOpenAddNewAddress = useCallback(() => {
+    addressSelectorRef.current?.dismiss();
+    setTimeout(() => {
+      addressEditRef.current?.present();
+    }, 150);
+  }, []);
+
+  const handleSelectAddress = useCallback((addr: SavedAddress) => {
+    checkout.selectAddress(addr);
+    addressSelectorRef.current?.dismiss();
+  }, [checkout]);
+
+  const handleSaveNewAddress = useCallback((newAddr: any) => {
+    addressEditRef.current?.dismiss();
+    createAddress.mutate(
+      {
+        label: newAddr.label || 'Home',
+        completeAddress: newAddr.completeAddress || newAddr.address,
+        postalCode: newAddr.postalCode,
+        city: newAddr.city,
+        state: newAddr.state,
+        latitude: newAddr.latitude,
+        longitude: newAddr.longitude,
+        landmark: newAddr.landmark,
+        isDefault: newAddr.isDefault,
+      },
+      {
+        onSuccess: (saved) => {
+          if (saved) checkout.selectAddress(saved);
+        },
+      }
+    );
+  }, [createAddress, checkout]);
 
   const handleBack = useCallback(() => {
     if (router.canGoBack()) router.back();
@@ -45,43 +102,73 @@ export default function CheckoutScreen() {
   }, [router]);
 
   const handleConfirmBooking = useCallback(async () => {
-    const idempotencyKey = `idem-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
-    
-    try {
-      const checkoutResult = await checkoutMutation.mutateAsync({
-        addressId: (checkout.address as any)?.id || undefined,
-        scheduleMode: checkout.scheduleMode === 'asap' ? 'NOW' : 'SCHEDULED',
-        scheduledDate: checkout.selectedDate
-          ? checkout.selectedDate.toISOString().split('T')[0]
-          : undefined,
-        scheduledTime: checkout.selectedTime || undefined,
-        paymentMethod: checkout.paymentMethod === 'cash' ? 'CASH' : 'ONLINE',
-        notes: checkout.noteText,
-        idempotencyKey,
-        expectedCartVersion: cart?.version,
-      });
-
-      if (checkoutResult && checkoutResult.booking) {
-        bookingFlow.confirmBooking({
-          userId: checkoutResult.booking.userId,
-          items: checkoutResult.booking.items.map((i: any) => ({
-            id: i.id,
-            name: i.title,
-            price: i.price,
-          })),
-          address: checkout.address?.shortLabel ?? 'Home Address',
-          scheduleMode: checkout.scheduleMode,
-          scheduledDate: checkout.selectedDate?.toDateString() ?? null,
-          scheduledTime: checkout.selectedTime,
-          paymentMethod: checkout.paymentMethod,
-          notes: checkout.noteText,
-          grandTotal: checkoutResult.booking.total,
-        });
-      }
-    } catch (err) {
-      console.error('Checkout failed', err);
+    // 1. Validate address
+    if (!checkout.address) {
+      addressEditRef.current?.present();
+      return;
     }
-  }, [bookingFlow, checkout, checkoutMutation, cart?.version]);
+
+    // 2. Validate cart
+    if (!cart?.items || cart.items.length === 0) {
+      Alert.alert('Cart Empty', 'Please add services to your cart before booking.');
+      return;
+    }
+
+    // 3. Validate schedule
+    if (checkout.scheduleMode === 'scheduled' && !checkout.selectedDate) {
+      Alert.alert('Select Time', 'Please choose a date and time for your scheduled booking.');
+      return;
+    }
+
+    // 4. Build idempotency key — generated once per booking attempt.
+    //    On network retry, the SAME key is resent so backend returns the existing booking.
+    const idempotencyKey = `mbx-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
+
+    // 5. Build scheduledAt ISO string if scheduled
+    let scheduledAt: string | null = null;
+    if (checkout.scheduleMode === 'scheduled' && checkout.selectedDate && checkout.selectedTime) {
+      try {
+        // Parse time string like "3:00 PM" and combine with date
+        const [timePart, meridiem] = checkout.selectedTime.split(' ');
+        const [hourStr, minuteStr] = timePart.split(':');
+        let hour = parseInt(hourStr, 10);
+        const minute = parseInt(minuteStr, 10);
+        if (meridiem === 'PM' && hour !== 12) hour += 12;
+        if (meridiem === 'AM' && hour === 12) hour = 0;
+        const d = new Date(checkout.selectedDate);
+        d.setHours(hour, minute, 0, 0);
+        scheduledAt = d.toISOString();
+      } catch {
+        scheduledAt = null;
+      }
+    }
+
+    // 6. Build notes (combine active chips + custom text)
+    const chipNotes = Array.from(checkout.activeChips).join(', ');
+    const notes = [chipNotes, checkout.noteText].filter(Boolean).join('. ');
+
+    try {
+      // 7. Trigger the matching animation + real API call via bookingFlow
+      bookingFlow.confirmBooking({
+        // Real API fields
+        addressId: checkout.address.id,
+        bookingType: checkout.scheduleMode === 'asap' ? 'ASAP' : 'SCHEDULED',
+        scheduledAt,
+        paymentMethod: 'CASH_ON_SERVICE',
+        notes,
+        couponCode: checkout.couponInput?.trim() || undefined,
+        idempotencyKey,
+        // UI display fields (not sent to API)
+        displayAddress: checkout.address.completeAddress ?? checkout.address.label,
+        displayScheduledDate: checkout.selectedDate
+          ? checkout.selectedDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })
+          : null,
+        displayScheduledTime: checkout.selectedTime,
+      });
+    } catch (err: any) {
+      console.error('[CheckoutScreen] confirmBooking error:', err);
+    }
+  }, [bookingFlow, checkout, cart]);
 
   const handleTrackService = useCallback(() => {
     bookingFlow.closeAssignedSheet();
@@ -125,7 +212,7 @@ export default function CheckoutScreen() {
         <SectionLabel label="Service Address" />
         <AddressCard
           address={checkout.address}
-          onChangeAddress={checkout.openLocationSelector}
+          onChangeAddress={handleOpenAddressSelector}
         />
 
         <SectionGap />
@@ -215,6 +302,25 @@ export default function CheckoutScreen() {
         selectedTime={checkout.selectedTime}
         onConfirm={handleDateTimeConfirm}
         onClose={() => setSheetVisible(false)}
+      />
+
+      {/* Address Selector Sheet */}
+      <SavedAddressSelectorSheet
+        ref={addressSelectorRef}
+        addresses={checkout.addresses}
+        selectedAddressId={checkout.address?.id || null}
+        onSelectAddress={handleSelectAddress}
+        onSetDefaultAddress={(id) => setDefaultAddress.mutate(id)}
+        onAddNewAddress={handleOpenAddNewAddress}
+        onClose={() => {}}
+      />
+
+      {/* New Address Edit Modal */}
+      <AddressEditModal
+        ref={addressEditRef}
+        address={{ id: 'new', label: 'Home', completeAddress: '', address: '', isDefault: false }}
+        onSave={handleSaveNewAddress}
+        onClose={() => {}}
       />
     </View>
   );

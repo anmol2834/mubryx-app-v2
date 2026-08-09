@@ -1,5 +1,5 @@
 import { Brand, Radius, Spacing, Typography } from '@/constants/brand';
-import type { LocationAddress } from '@/services/locationService';
+import { SavedAddress } from '@/types/address';
 import { memo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Svg, { Circle, Path } from 'react-native-svg';
@@ -40,7 +40,7 @@ function EditIcon() {
 }
 
 interface AddressCardProps {
-  address: LocationAddress | null;
+  address: SavedAddress | null;
   onChangeAddress: () => void;
 }
 
@@ -48,9 +48,33 @@ export const AddressCard = memo(function AddressCard({
   address,
   onChangeAddress,
 }: AddressCardProps) {
-  const areaLabel = address?.area || address?.city || 'Your Location';
-  const fullAddress = address?.formatted ?? 'No address selected';
-  const landmark = address?.landmark || null;
+  if (!address) {
+    return (
+      <View style={[styles.card, styles.emptyCard]}>
+        <View style={styles.headerRow}>
+          <View style={[styles.iconWrap, { backgroundColor: '#FFF3E0' }]}>
+            <PinIcon />
+          </View>
+          <View style={styles.headerTexts}>
+            <Text style={styles.areaLabel}>Service Address Required</Text>
+            <Text style={styles.fullAddress}>
+              Please add the address where our technician should perform the service.
+            </Text>
+          </View>
+        </View>
+        <Pressable
+          style={({ pressed }) => [styles.addAddressBtn, pressed && { opacity: 0.8 }]}
+          onPress={onChangeAddress}
+        >
+          <Text style={styles.addAddressBtnText}>+ Add Service Address</Text>
+        </Pressable>
+      </View>
+    );
+  }
+
+  const label = address.label || 'Home';
+  const fullAddress = address.completeAddress;
+  const landmark = address.landmark || null;
 
   return (
     <View style={styles.card}>
@@ -63,17 +87,20 @@ export const AddressCard = memo(function AddressCard({
           <View style={styles.labelRow}>
             <Text style={styles.defaultLabel}>Service Address</Text>
             <View style={styles.homeBadge}>
-              <Text style={styles.homeBadgeText}>Home</Text>
+              <Text style={styles.homeBadgeText}>{label}</Text>
             </View>
           </View>
-          <Text style={styles.areaLabel} numberOfLines={1}>{areaLabel}</Text>
+          <Text style={styles.areaLabel} numberOfLines={1}>
+            {label}
+          </Text>
         </View>
         <Pressable
           style={({ pressed }) => [styles.changeBtn, pressed && styles.changeBtnPressed]}
           onPress={onChangeAddress}
           accessibilityLabel="Change address"
           accessibilityRole="button"
-          hitSlop={8}>
+          hitSlop={8}
+        >
           <EditIcon />
           <Text style={styles.changeBtnText}>Change</Text>
         </Pressable>
@@ -83,9 +110,13 @@ export const AddressCard = memo(function AddressCard({
       <View style={styles.divider} />
 
       {/* Full address */}
-      <Text style={styles.fullAddress} numberOfLines={2}>{fullAddress}</Text>
+      <Text style={styles.fullAddress} numberOfLines={2}>
+        {fullAddress}
+      </Text>
       {landmark ? (
-        <Text style={styles.landmark} numberOfLines={1}>Near: {landmark}</Text>
+        <Text style={styles.landmark} numberOfLines={1}>
+          Landmark: {landmark}
+        </Text>
       ) : null}
     </View>
   );
@@ -99,6 +130,25 @@ const styles = StyleSheet.create({
     padding: Spacing.base,
     borderWidth: 1,
     borderColor: Brand.borderLight,
+  },
+  emptyCard: {
+    borderStyle: 'dashed',
+    borderColor: Brand.primary,
+    backgroundColor: Brand.primarySoft,
+    gap: Spacing.md,
+  },
+  addAddressBtn: {
+    backgroundColor: Brand.primary,
+    borderRadius: Radius.md,
+    paddingVertical: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 4,
+  },
+  addAddressBtnText: {
+    ...Typography.bodyMedium,
+    color: Brand.white,
+    fontWeight: '700',
   },
   headerRow: {
     flexDirection: 'row',

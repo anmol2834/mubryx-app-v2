@@ -25,6 +25,9 @@ import {
   type UpcomingBooking,
 } from './mockData';
 
+import { useBookingsQuery } from '@/hooks/queries/useBookingsQuery';
+import { mapBookingToCompleted, mapBookingToUpcoming } from './mapper';
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function applySort<T extends { timestamp: number; amountRaw: number }>(
@@ -41,18 +44,20 @@ function applySort<T extends { timestamp: number; amountRaw: number }>(
   }
 }
 
-// Mock filter: "recent" = last 30 days, "this_month" = Jul 2025, "last_month" = Jun 2025
 function applyFilter<T extends { timestamp: number }>(items: T[], filter: FilterOption): T[] {
   if (filter === 'all') return items;
-  const now = 1753920000; // ~Aug 2025 reference
+  const now = Math.floor(Date.now() / 1000);
   if (filter === 'recent')     return items.filter(i => now - i.timestamp < 30 * 86400);
   if (filter === 'this_month') return items.filter(i => {
     const d = new Date(i.timestamp * 1000);
-    return d.getMonth() === 6 && d.getFullYear() === 2025; // July = 6
+    const nowD = new Date();
+    return d.getMonth() === nowD.getMonth() && d.getFullYear() === nowD.getFullYear();
   });
   if (filter === 'last_month') return items.filter(i => {
     const d = new Date(i.timestamp * 1000);
-    return d.getMonth() === 5 && d.getFullYear() === 2025; // June = 5
+    const lastM = new Date();
+    lastM.setMonth(lastM.getMonth() - 1);
+    return d.getMonth() === lastM.getMonth() && d.getFullYear() === lastM.getFullYear();
   });
   return items;
 }
@@ -82,11 +87,16 @@ export const BookingHistoryScreen = memo(function BookingHistoryScreen() {
   const [search, setSearch]         = useState('');
   const [filter, setFilter]         = useState<FilterOption>('all');
   const [sort, setSort]             = useState<SortOption>('latest');
-  const [loading, setLoading]       = useState(false);
-  const [error, setError]           = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
 
   const scrollRef = useRef<ScrollView>(null);
+
+  // Real backend queries for upcoming and completed bookings
+  const upcomingQuery = useBookingsQuery('upcoming');
+  const completedQuery = useBookingsQuery('completed');
+
+  const isLoading = upcomingQuery.isLoading || completedQuery.isLoading;
+  const isError = upcomingQuery.isError || completedQuery.isError;
+  const isRefreshing = upcomingQuery.isRefetching || completedQuery.isRefetching;
 
   const handleTabChange = useCallback((tab: TabKey) => {
     setActiveTab(tab);
@@ -95,28 +105,37 @@ export const BookingHistoryScreen = memo(function BookingHistoryScreen() {
   }, []);
 
   const handleRefresh = useCallback(() => {
-    setRefreshing(true);
-    // Simulate network refresh
-    setTimeout(() => setRefreshing(false), 1200);
-  }, []);
+    upcomingQuery.refetch();
+    completedQuery.refetch();
+  }, [upcomingQuery, completedQuery]);
 
   const handleRetry = useCallback(() => {
-    setError(false);
-    setLoading(true);
-    setTimeout(() => setLoading(false), 800);
-  }, []);
+    upcomingQuery.refetch();
+    completedQuery.refetch();
+  }, [upcomingQuery, completedQuery]);
+
+  const completedList = useMemo<CompletedBooking[]>(() => {
+    const raw = completedQuery.data || [];
+    if (raw.length === 0) return COMPLETED_BOOKINGS; // Fallback to mock if empty initially
+    return raw.map(mapBookingToCompleted);
+  }, [completedQuery.data]);
+
+  const upcomingList = useMemo<UpcomingBooking[]>(() => {
+    const raw = upcomingQuery.data || [];
+    return raw.map(mapBookingToUpcoming);
+  }, [upcomingQuery.data]);
 
   const filteredCompleted = useMemo(() => {
-    const searched = searchCompleted(COMPLETED_BOOKINGS, search);
+    const searched = searchCompleted(completedList, search);
     const filtered = applyFilter(searched, filter);
     return applySort(filtered, sort);
-  }, [search, filter, sort]);
+  }, [completedList, search, filter, sort]);
 
   const filteredUpcoming = useMemo(() => {
-    const searched = searchUpcoming(UPCOMING_BOOKINGS, search);
+    const searched = searchUpcoming(upcomingList, search);
     const filtered = applyFilter(searched, filter);
     return applySort(filtered, sort);
-  }, [search, filter, sort]);
+  }, [upcomingList, search, filter, sort]);
 
   const isSearchEmpty =
     activeTab === 'completed'
@@ -133,8 +152,8 @@ export const BookingHistoryScreen = memo(function BookingHistoryScreen() {
 
       <BookingTabs
         active={activeTab}
-        completedCount={COMPLETED_BOOKINGS.length}
-        upcomingCount={UPCOMING_BOOKINGS.length}
+        completedCount={completedList.length}
+        upcomingCount={upcomingList.length}
         onChange={handleTabChange}
       />
 
@@ -146,9 +165,9 @@ export const BookingHistoryScreen = memo(function BookingHistoryScreen() {
       />
 
       {/* Content */}
-      {loading ? (
+      {isLoading ? (
         <SkeletonList />
-      ) : error ? (
+      ) : isError ? (
         <ErrorState onRetry={handleRetry} />
       ) : (
         <ScrollView
@@ -160,7 +179,7 @@ export const BookingHistoryScreen = memo(function BookingHistoryScreen() {
           scrollEventThrottle={16}
           refreshControl={
             <RefreshControl
-              refreshing={refreshing}
+              refreshing={isRefreshing}
               onRefresh={handleRefresh}
               tintColor={Brand.primary}
               colors={[Brand.primary]}

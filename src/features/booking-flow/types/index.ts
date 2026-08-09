@@ -1,6 +1,6 @@
 // ─── Booking Flow — Type Definitions ─────────────────────────────────────────
-// Designed to map 1:1 with future backend API responses.
-// Only the service layer changes when backend goes live.
+// These types drive the booking animation UI (FindingTechnicianSheet, TechnicianAssignedSheet).
+// The service layer maps between CreateBookingResponse and these UI types.
 
 import type { Engineer, TrackStage } from '@/screens/Profile/constants';
 
@@ -41,6 +41,7 @@ export interface BookingFlowEngineer extends Engineer {
 
 export interface BookingResult {
   bookingId: string;
+  bookingNumber: string;
   otp: string;
   status: BookingFlowStatus;
   engineer: BookingFlowEngineer;
@@ -55,15 +56,23 @@ export interface BookingResult {
   address: string;
 }
 
-// Input payload sent to the booking service
+/**
+ * Payload sent to confirmBooking() in useBookingFlow.
+ * This is the REAL API request payload — no client-calculated prices.
+ */
 export interface CreateBookingPayload {
-  userId: string;
-  items: Array<{ id: string; name: string; price: number }>;
-  address: string;
-  scheduleMode: 'asap' | 'scheduled';
-  scheduledDate: string | null;
-  scheduledTime: string | null;
-  paymentMethod: string;
+  // Real booking fields (sent to API)
+  addressId: string;
+  bookingType: 'ASAP' | 'SCHEDULED';
+  scheduledAt?: string | null;
+  paymentMethod: 'CASH_ON_SERVICE';
   notes: string;
-  grandTotal: number;
+  couponCode?: string;
+  idempotencyKey: string;
+  customerCurrentLocation?: { latitude: number; longitude: number };
+
+  // UI-only display fields (not sent to API, used by assigned sheet)
+  displayAddress: string;
+  displayScheduledDate?: string | null;
+  displayScheduledTime?: string | null;
 }

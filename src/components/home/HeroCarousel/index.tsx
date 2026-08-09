@@ -44,6 +44,7 @@ const HeroBannerItem = memo(function HeroBannerItem({ item }: { item: BannerItem
           source={item.image}
           style={styles.image}
           resizeMode="cover"
+          fadeDuration={0}
           accessibilityIgnoresInvertColors
         />
       </View>
@@ -165,10 +166,10 @@ export const HeroCarousel = memo(function HeroCarousel() {
           offset: ITEM_W * index,
           index,
         })}
-        // Prevent FlatList from recycling clones incorrectly
-        windowSize={5}
-        initialNumToRender={COUNT}
-        maxToRenderPerBatch={COUNT}
+        // Memory-optimized windowing for smooth Android image rendering
+        windowSize={3}
+        initialNumToRender={3}
+        maxToRenderPerBatch={3}
         removeClippedSubviews={false}
       />
 

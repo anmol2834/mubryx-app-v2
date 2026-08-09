@@ -1,10 +1,10 @@
 import { Brand } from '@/constants/brand';
-import { memo } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef } from 'react';
 import { ScrollView, StatusBar, StyleSheet, View, Linking } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { BottomSheetModal } from '@gorhom/bottom-sheet';
 import { useRouter } from 'expo-router';
-import { useEffect, useRef, useCallback } from 'react';
+import { SavedAddress } from '@/types/address';
 import { AddressesSection } from './components/AddressesSection';
 import { AddressEditModal } from './components/AddressEditModal';
 //import { BookingsSection } from './components/BookingsSection';
@@ -54,7 +54,23 @@ export const ProfileScreen = memo(function ProfileScreen({ onNavigateToTrack }: 
     }
   }, [profile.onSettingsRowPress, router]);
 
-  const editingAddress = profile.addresses.find(a => a.id === profile.editingAddressId) || null;
+  const editingAddress = useMemo(() => {
+    if (!profile.editingAddressId) return null;
+    const found = profile.addresses.find((a) => a.id === profile.editingAddressId);
+    if (found) return found;
+
+    if (profile.editingAddressId.startsWith('new_')) {
+      const tagLabel = profile.editingAddressId.replace('new_', '');
+      return {
+        id: 'new',
+        label: tagLabel,
+        completeAddress: '',
+        address: '',
+        isDefault: false,
+      } as SavedAddress;
+    }
+    return { id: 'new', label: 'Home', completeAddress: '', address: '', isDefault: false } as SavedAddress;
+  }, [profile.addresses, profile.editingAddressId]);
 
   return (
     <View style={[s.root, { paddingTop: insets.top }]}>

@@ -15,6 +15,10 @@ interface Props {
 }
 
 export const AddressesSection = memo(function AddressesSection({ addresses, onEdit }: Props) {
+  const homeAddr = addresses.find((a) => a.label.toLowerCase() === 'home');
+  const officeAddr = addresses.find((a) => a.label.toLowerCase() === 'office');
+  const otherAddr = addresses.find((a) => a.label.toLowerCase() === 'other');
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -22,28 +26,115 @@ export const AddressesSection = memo(function AddressesSection({ addresses, onEd
       </View>
 
       <View style={styles.list}>
-        {addresses.map((addr) => (
-          <Pressable 
-            key={addr.id} 
+        {/* SLOT 1: HOME CARD */}
+        {homeAddr ? (
+          <Pressable
+            key={homeAddr.id}
             style={({ pressed }) => [styles.card, pressed && { opacity: 0.7 }]}
-            onPress={() => onEdit(addr.id)}
+            onPress={() => onEdit(homeAddr.id)}
           >
             <View style={styles.cardLeft}>
-              <Text style={styles.labelIcon}>{LABEL_ICONS[addr.label]}</Text>
+              <Text style={styles.labelIcon}>🏠</Text>
               <View style={styles.cardTexts}>
                 <View style={styles.labelRow}>
-                  <Text style={styles.label}>{addr.label}</Text>
-                  {addr.isDefault && (
+                  <Text style={styles.label}>Home</Text>
+                  {homeAddr.isDefault && (
                     <View style={styles.defaultBadge}>
                       <Text style={styles.defaultText}>Default</Text>
                     </View>
                   )}
                 </View>
-                <Text style={styles.address} numberOfLines={2}>{addr.address}</Text>
+                <Text style={styles.address} numberOfLines={2}>
+                  {homeAddr.completeAddress || homeAddr.address}
+                </Text>
               </View>
             </View>
           </Pressable>
-        ))}
+        ) : (
+          <Pressable
+            style={({ pressed }) => [styles.placeholderCard, pressed && { opacity: 0.7 }]}
+            onPress={() => onEdit('new_Home')}
+          >
+            <Text style={styles.labelIcon}>🏠</Text>
+            <View style={styles.cardTexts}>
+              <Text style={styles.placeholderTitle}>Home Address</Text>
+              <Text style={styles.placeholderSub}>Tap to add your Home service address</Text>
+            </View>
+            <Text style={styles.addPlusText}>+</Text>
+          </Pressable>
+        )}
+
+        {/* SLOT 2: OFFICE CARD */}
+        {officeAddr ? (
+          <Pressable
+            key={officeAddr.id}
+            style={({ pressed }) => [styles.card, pressed && { opacity: 0.7 }]}
+            onPress={() => onEdit(officeAddr.id)}
+          >
+            <View style={styles.cardLeft}>
+              <Text style={styles.labelIcon}>🏢</Text>
+              <View style={styles.cardTexts}>
+                <View style={styles.labelRow}>
+                  <Text style={styles.label}>Office</Text>
+                  {officeAddr.isDefault && (
+                    <View style={styles.defaultBadge}>
+                      <Text style={styles.defaultText}>Default</Text>
+                    </View>
+                  )}
+                </View>
+                <Text style={styles.address} numberOfLines={2}>
+                  {officeAddr.completeAddress || officeAddr.address}
+                </Text>
+              </View>
+            </View>
+          </Pressable>
+        ) : (
+          <Pressable
+            style={({ pressed }) => [styles.placeholderCard, pressed && { opacity: 0.7 }]}
+            onPress={() => onEdit('new_Office')}
+          >
+            <Text style={styles.labelIcon}>🏢</Text>
+            <View style={styles.cardTexts}>
+              <Text style={styles.placeholderTitle}>Office Address</Text>
+              <Text style={styles.placeholderSub}>Tap to add your Office service address</Text>
+            </View>
+            <Text style={styles.addPlusText}>+</Text>
+          </Pressable>
+        )}
+
+        {/* SLOT 3: OTHER CARD */}
+        {otherAddr ? (
+          <Pressable
+            key={otherAddr.id}
+            style={({ pressed }) => [styles.card, pressed && { opacity: 0.7 }]}
+            onPress={() => onEdit(otherAddr.id)}
+          >
+            <View style={styles.cardLeft}>
+              <Text style={styles.labelIcon}>📍</Text>
+              <View style={styles.cardTexts}>
+                <View style={styles.labelRow}>
+                  <Text style={styles.label}>Other</Text>
+                  {otherAddr.isDefault && (
+                    <View style={styles.defaultBadge}>
+                      <Text style={styles.defaultText}>Default</Text>
+                    </View>
+                  )}
+                </View>
+                <Text style={styles.address} numberOfLines={2}>
+                  {otherAddr.completeAddress || otherAddr.address}
+                </Text>
+              </View>
+            </View>
+          </Pressable>
+        ) : (
+          <Pressable
+            style={({ pressed }) => [styles.addOtherCard, pressed && { opacity: 0.7 }]}
+            onPress={() => onEdit('new_Other')}
+          >
+            <Text style={styles.labelIcon}>📍</Text>
+            <Text style={styles.addOtherText}>+ Add Other Location</Text>
+          </Pressable>
+        )}
       </View>
     </View>
   );
@@ -155,5 +246,46 @@ const styles = StyleSheet.create({
     ...Typography.small,
     color: Brand.textMuted,
     textAlign: 'center',
+  },
+  placeholderCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Brand.surface,
+    borderRadius: Radius.lg,
+    padding: Spacing.base,
+    borderWidth: 1.5,
+    borderColor: Brand.borderLight,
+    borderStyle: 'dashed',
+    gap: Spacing.md,
+  },
+  placeholderTitle: {
+    ...Typography.bodyMedium,
+    color: Brand.textPrimary,
+    fontWeight: '600',
+  },
+  placeholderSub: {
+    ...Typography.caption,
+    color: Brand.textMuted,
+  },
+  addPlusText: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: Brand.primary,
+  },
+  addOtherCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Brand.surface,
+    borderRadius: Radius.lg,
+    padding: Spacing.base,
+    borderWidth: 1,
+    borderColor: Brand.primary,
+    gap: Spacing.sm,
+  },
+  addOtherText: {
+    ...Typography.bodyMedium,
+    color: Brand.primary,
+    fontWeight: '700',
   },
 });

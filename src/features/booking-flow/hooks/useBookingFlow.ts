@@ -6,6 +6,8 @@ import {
   FINAL_METRICS,
 } from '../constants';
 import { cancelBooking, createBooking } from '../services/bookingService';
+import { queryClient } from '@/api/queryClient';
+import { useAuthStore } from '@/store/authStore';
 import type {
   BookingFlowStatus,
   BookingResult,
@@ -15,6 +17,24 @@ import type {
 } from '../types';
 
 export type BookingSheet = 'none' | 'finding' | 'assigned';
+
+// ─── Error Message Mapping ────────────────────────────────────────────────────
+
+function getBookingErrorMessage(errorCode: string, fallback?: string): string {
+  const messages: Record<string, string> = {
+    BOOKING_CART_EMPTY: 'Your cart is empty. Please add services before booking.',
+    BOOKING_ADDRESS_REQUIRED: 'Please select a service address before booking.',
+    BOOKING_ADDRESS_NOT_FOUND: 'Your selected address could not be found. Please choose another.',
+    BOOKING_ADDRESS_NOT_OWNED: 'This address does not belong to your account.',
+    BOOKING_SERVICE_UNAVAILABLE: 'One or more services in your cart are no longer available. Please update your cart.',
+    BOOKING_INVALID_SCHEDULE: 'The scheduled time is invalid. Please choose a future date and time.',
+    BOOKING_PAYMENT_METHOD_UNSUPPORTED: 'This payment method is not currently supported. Please select Cash on Service.',
+    BOOKING_CREATION_FAILED: 'Your booking could not be created. Please try again.',
+    NETWORK_ERROR: 'Network connection failed. Please check your internet and try again.',
+    TIMEOUT: 'The request timed out. Please try again.',
+  };
+  return messages[errorCode] ?? fallback ?? 'Something went wrong. Please try again.';
+}
 
 export interface UseBookingFlowReturn {
   // Sheet visibility
@@ -50,6 +70,7 @@ export function useBookingFlow(): UseBookingFlowReturn {
   const [hasError, setHasError]               = useState(false);
   const [errorMessage, setErrorMessage]       = useState('');
 
+  const user = useAuthStore((s) => s.user);
   const cancelledRef  = useRef(false);
   const payloadRef    = useRef<CreateBookingPayload | null>(null);
   const timersRef     = useRef<ReturnType<typeof setTimeout>[]>([]);
@@ -174,12 +195,21 @@ export function useBookingFlow(): UseBookingFlowReturn {
       .then(result => {
         apiResult = result;
         apiDone = true;
+        // Invalidate cart and bookings queries on success
+        const cartKey = user?.id ? ['cart', user.id] : ['cart', 'guest'];
+        const bookingsKey = user?.id ? ['bookings', user.id] : ['bookings'];
+        queryClient.setQueryData(cartKey, null);
+        queryClient.removeQueries({ queryKey: cartKey });
+        queryClient.invalidateQueries({ queryKey: bookingsKey });
         tryTransition();
       })
-      .catch(() => {
+      .catch((err) => {
         if (!cancelledRef.current) {
+          // Provide user-friendly error based on error code
+          const errorCode = (err as any)?.errorCode || 'BOOKING_CREATION_FAILED';
+          const userMessage = getBookingErrorMessage(errorCode, err?.message);
           setHasError(true);
-          setErrorMessage('Booking failed. Please try again.');
+          setErrorMessage(userMessage);
           setActiveSheet('none');
         }
       });
