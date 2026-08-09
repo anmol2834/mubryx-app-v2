@@ -1,0 +1,36 @@
+{
+  "expo": {
+    "name": "Mubryx-App",
+    "slug": "Mubryx-App",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "mubryxapp",
+    "userInterfaceStyle": "automatic",
+    "android": {
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "output": "static"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#1565C0"
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Allow Mubryx to use your location for accurate service availability and faster bookings.",
+          "locationWhenInUsePermission": "Allow Mubryx to use your location for accurate service availability and faster bookings."
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": false
+    }
+  }
+}
