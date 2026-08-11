@@ -71,8 +71,8 @@ function StarIcon() {
 
 // ─── OTP Card ─────────────────────────────────────────────────────────────────
 
-const OTPCard = memo(function OTPCard({ otp }: { otp: string }) {
-  const digits = otp.split('');
+const OTPCard = memo(function OTPCard({ otp }: { otp: string | undefined }) {
+  const digits = otp ? otp.split('') : ['-', '-', '-', '-', '-', '-'];
   return (
     <View style={otp_s.card}>
       <View style={otp_s.left}>

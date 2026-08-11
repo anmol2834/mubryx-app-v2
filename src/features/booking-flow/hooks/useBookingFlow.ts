@@ -194,8 +194,10 @@ export function useBookingFlow(): UseBookingFlowReturn {
     let animDone = false;
 
     const tryTransition = () => {
-      if (apiDone && animDone && !cancelledRef.current) {
+      if (apiDone && !cancelledRef.current) {
         if (apiResult) {
+          // Stop any running animations
+          clearTimers();
           // Set the result and transition immediately to success sheet
           setBookingResult(apiResult);
           setActiveSheet('assigned');
