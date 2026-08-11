@@ -1,6 +1,6 @@
 import { Brand } from '@/constants/brand';
 import { memo, useCallback, useEffect, useMemo, useRef } from 'react';
-import { ScrollView, StatusBar, StyleSheet, View, Linking } from 'react-native';
+import { Linking, RefreshControl, ScrollView, StatusBar, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { BottomSheetModal } from '@gorhom/bottom-sheet';
 import { useRouter } from 'expo-router';
@@ -80,7 +80,15 @@ export const ProfileScreen = memo(function ProfileScreen({ onNavigateToTrack }: 
         style={s.scroll}
         contentContainerStyle={[s.content, { paddingBottom: 100 + insets.bottom }]}
         showsVerticalScrollIndicator={false}
-        scrollEventThrottle={16}>
+        scrollEventThrottle={16}
+        refreshControl={
+          <RefreshControl
+            refreshing={profile.isRefreshing}
+            onRefresh={profile.onRefresh}
+            colors={[Brand.primary]}
+            tintColor={Brand.primary}
+          />
+        }>
 
         <ProfileHero
           user={profile.user}

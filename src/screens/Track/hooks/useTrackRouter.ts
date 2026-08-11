@@ -18,6 +18,8 @@ import type { ActiveBooking, TrackView } from '../types';
 export interface UseTrackRouterReturn {
   view: TrackView;
   bookings: ActiveBooking[];
+  isRefreshing: boolean;
+  onRefresh: () => Promise<void>;
   /** Call when user taps a booking card to drill into detail */
   openDetail: (bookingId: string) => void;
   /** Call to go back from detail → list (only used when list was showing) */
@@ -28,6 +30,7 @@ export interface UseTrackRouterReturn {
 export function useTrackRouter(isActive: boolean): UseTrackRouterReturn {
   const [view, setView]       = useState<TrackView>({ kind: 'loading' });
   const [bookings, setBookings] = useState<ActiveBooking[]>([]);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   // Remember if we came from the list, so backFromDetail can return there
   const cameFromList = useRef(false);
   const hasLoaded    = useRef(false);
@@ -51,6 +54,21 @@ export function useTrackRouter(isActive: boolean): UseTrackRouterReturn {
     } catch {
       // On error, stay on empty state — graceful degradation
       setView({ kind: 'empty' });
+    }
+  }, []);
+
+  const handleRefresh = useCallback(async () => {
+    setIsRefreshing(true);
+    try {
+      const active = await getActiveBookings(CURRENT_USER_ID);
+      setBookings(active);
+      if (active.length === 0) setView({ kind: 'empty' });
+      else if (active.length === 1) setView({ kind: 'detail', bookingId: active[0].bookingId });
+      else setView({ kind: 'list' });
+    } catch {
+      // Keep state
+    } finally {
+      setIsRefreshing(false);
     }
   }, []);
 
@@ -85,5 +103,5 @@ export function useTrackRouter(isActive: boolean): UseTrackRouterReturn {
     load();
   }, [load]);
 
-  return { view, bookings, openDetail, backFromDetail, retry };
+  return { view, bookings, isRefreshing, onRefresh: handleRefresh, openDetail, backFromDetail, retry };
 }

@@ -31,7 +31,7 @@ export const TrackEmptyState = memo(function TrackEmptyState({ onBookService }: 
       </View>
       <Text style={s.title}>No Live Services</Text>
       <Text style={s.subtitle}>
-        You don't have any ongoing bookings right now.{'\n'}Book a service to track it here.
+        {"You don't have any ongoing bookings right now.\nBook a service to track it here."}
       </Text>
       {onBookService && (
         <Pressable

@@ -22,17 +22,16 @@ function delay(ms: number): Promise<void> {
 
 // ─── Fetch ────────────────────────────────────────────────────────────────────
 
-export async function fetchNotifications(userId: string): Promise<Notification[]> {
-  await delay(DELAY);
-  // Filter by userId — server handles this when API is live
-  return MOCK_NOTIFICATIONS.filter((n) => n.userId === userId);
+export async function fetchNotifications(_userId: string): Promise<Notification[]> {
+  await delay(100);
+  return [];
 }
 
 // ─── Summary stats ────────────────────────────────────────────────────────────
 
 export async function fetchSummaryStats(userId: string): Promise<NotificationSummaryStats> {
-  await delay(200);
-  const all = MOCK_NOTIFICATIONS.filter((n) => n.userId === userId);
+  await delay(100);
+  const all = await fetchNotifications(userId);
   const now = Date.now();
   const todayMs = 24 * 3_600_000;
 

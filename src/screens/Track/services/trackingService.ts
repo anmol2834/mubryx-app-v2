@@ -1,33 +1,77 @@
-/**
- * TrackingService — data layer for the Track module.
- * Currently backed by mock data.
- *
- * To integrate a real API / Firebase / WebSocket:
- *   → Replace ONLY the functions below.
- *   → Hooks and UI require zero changes.
- */
-
-import { MOCK_ACTIVE_BOOKINGS } from '../mock';
-import type { ActiveBooking } from '../types';
+import { bookingService } from '@/services/bookingService';
+import type { ActiveBooking, TrackStageId } from '../types';
 import { isLiveBooking, sortBookingsByProgress } from '../utils';
 
-const DELAY_MS = 400;
+function mapApiBookingToActiveBooking(b: any): ActiveBooking {
+  const firstItem = b.items?.[0] || b.service || {};
+  const serviceTitle = firstItem.serviceTitle || firstItem.title || 'Service';
+  const currentStage: TrackStageId = b.status === 'COMPLETED' ? 'completed' : b.status === 'IN_PROGRESS' ? 'started' : 'confirmed';
 
-function delay(ms: number): Promise<void> {
-  return new Promise((r) => setTimeout(r, ms));
+  return {
+    id: b._id || b.id,
+    bookingId: b._id || b.id,
+    serviceName: serviceTitle,
+    serviceIcon: '🔧',
+    applianceName: serviceTitle,
+    currentStage,
+    eta: '30 mins',
+    scheduledDate: b.scheduledDate || 'Today',
+    scheduledTime: b.scheduledSlot || 'As scheduled',
+    price: b.totalAmount || b.amount || 0,
+    paymentMethod: b.paymentMethod || 'Online',
+    warranty: '30 Days Warranty',
+    estimatedDuration: '45 mins',
+    engineer: b.technician ? {
+      id: b.technician._id || b.technician.id || 'tech1',
+      name: b.technician.name || 'Technician Assigned',
+      avatarInitials: (b.technician.name || 'Tech').slice(0, 2).toUpperCase(),
+      avatarColor: '#1565C0',
+      rating: String(b.technician.rating || 4.9),
+      experience: '5+ Yrs',
+      isVerified: true,
+      phone: b.technician.phone || '',
+    } : null,
+    address: b.address?.completeAddress || b.address?.address || 'Service Location',
+    landmark: b.address?.landmark || '',
+    contactPerson: b.address?.contactPerson || 'Customer',
+    contactPhone: b.address?.contactPhone || '',
+    stages: [
+      { id: 'confirmed', title: 'Booking Confirmed', description: 'Service confirmed', timestamp: b.createdAt || '', status: 'done' },
+      { id: 'assigned', title: 'Technician Assigned', description: b.technician?.name ? `${b.technician.name} assigned` : 'Assigning technician', timestamp: null, status: b.technician ? 'done' : 'pending' },
+      { id: 'journey', title: 'On the Way', description: 'Technician heading to location', timestamp: null, status: 'pending' },
+      { id: 'nearby', title: 'Nearby', description: 'Technician near location', timestamp: null, status: 'pending' },
+      { id: 'arrived', title: 'Arrived', description: 'Technician at location', timestamp: null, status: 'pending' },
+      { id: 'started', title: 'Service Started', description: 'Work in progress', timestamp: null, status: b.status === 'IN_PROGRESS' ? 'active' : 'pending' },
+      { id: 'completed', title: 'Service Completed', description: 'Service done', timestamp: null, status: b.status === 'COMPLETED' ? 'done' : 'pending' },
+    ],
+  };
 }
 
 // ─── Fetch all live bookings for a user ───────────────────────────────────────
 
 export async function getActiveBookings(_userId: string): Promise<ActiveBooking[]> {
-  await delay(DELAY_MS);
-  const live = MOCK_ACTIVE_BOOKINGS.filter(isLiveBooking);
-  return sortBookingsByProgress(live);
+  try {
+    const res = await bookingService.getBookings('upcoming');
+    if (res.ok && Array.isArray(res.data) && res.data.length > 0) {
+      const active = res.data.map(mapApiBookingToActiveBooking).filter(isLiveBooking);
+      return sortBookingsByProgress(active);
+    }
+  } catch {
+    // Return empty array on error so UI displays professional empty state
+  }
+  return [];
 }
 
 // ─── Fetch a single booking by ID ────────────────────────────────────────────
 
 export async function getTrackingByBookingId(bookingId: string): Promise<ActiveBooking | null> {
-  await delay(200);
-  return MOCK_ACTIVE_BOOKINGS.find((b) => b.bookingId === bookingId) ?? null;
+  try {
+    const res = await bookingService.getBookingById(bookingId);
+    if (res.ok && res.data) {
+      return mapApiBookingToActiveBooking(res.data);
+    }
+  } catch {
+    // Return null on error
+  }
+  return null;
 }

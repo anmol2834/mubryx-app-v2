@@ -17,6 +17,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CartHeader } from './components/CartHeader';
 import { CartItemCard } from './components/CartItemCard';
+import { CartSkeleton } from './components/CartSkeleton';
 import { EmptyCart } from './components/EmptyCart';
 import { OrderSummaryCard } from './components/OrderSummaryCard';
 import { StickyCheckoutBar } from './components/StickyCheckoutBar';
@@ -67,9 +68,10 @@ export default function CartScreen() {
 
   if (isLoading && !cart) {
     return (
-      <View style={[styles.root, styles.centerContent]}>
-        <ActivityIndicator size="large" color={Brand.primary} />
-        <Text style={styles.loadingText}>Fetching cart...</Text>
+      <View style={styles.root}>
+        <StatusBar barStyle="dark-content" backgroundColor={Brand.white} translucent={false} />
+        <CartHeader onBack={handleBack} itemCount={0} />
+        <CartSkeleton />
       </View>
     );
   }

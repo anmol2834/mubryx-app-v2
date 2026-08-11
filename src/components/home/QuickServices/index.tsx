@@ -4,12 +4,11 @@ import { useRouter } from 'expo-router';
 import { memo, useCallback, useMemo } from 'react';
 import { Dimensions, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import Svg, { Circle, Path, Polyline, Rect, SvgXml } from 'react-native-svg';
+import { QuickServicesSkeleton } from '../Skeletons/HomeServiceSkeleton';
+
 const { width: SCREEN_W } = Dimensions.get('window');
 const CARD_W = (SCREEN_W - Spacing.screen * 2 - Spacing.md * 2) / 3;
 
-// router is passed as a prop so it's NOT created inside FlatList items
-// This prevents the hook from re-initialising per render and avoids router
-// being recreated on every FlatList re-render, which was contributing to lag.
 const ServiceCard = memo(function ServiceCard({
   item,
   onPress,
@@ -35,9 +34,11 @@ const ServiceCard = memo(function ServiceCard({
     </View>
   );
 });
+
 export const QuickServices = memo(function QuickServices() {
   const router = useRouter();
-  const { data: apiCategories = [] } = useCategoriesQuery();
+  const { data: apiCategories = [], isLoading } = useCategoriesQuery();
+
   const displayServices = useMemo(() => {
     if (!apiCategories || apiCategories.length === 0) {
       return [];
@@ -53,15 +54,21 @@ export const QuickServices = memo(function QuickServices() {
         slug: cat.slug,
       }));
   }, [apiCategories]);
+
   const handleCardPress = useCallback((item: any) => {
     router.push({ pathname: '/service-detail', params: { categoryId: item.id, slug: item.slug } });
   }, [router]);
+
   const renderItem = useCallback(
     ({ item }: { item: any }) => (
       <ServiceCard item={item} onPress={handleCardPress} />
     ),
     [handleCardPress]
   );
+
+  if (isLoading) {
+    return <QuickServicesSkeleton />;
+  }
   return (
     <View style={styles.wrapper}>
       <View style={styles.header}>

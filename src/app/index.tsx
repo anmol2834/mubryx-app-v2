@@ -1,7 +1,10 @@
 import { useAuthStore } from '@/store/authStore';
+import { useCategoriesQuery } from '@/hooks/queries/useCategoriesQuery';
+import { useCartQuery } from '@/hooks/queries/useCartQuery';
 import { Redirect } from 'expo-router';
 import { memo, useCallback, useState } from 'react';
 import {
+    RefreshControl,
     ScrollView,
     StatusBar,
     StyleSheet,
@@ -37,6 +40,15 @@ export default function HomeScreen() {
   const isLoading = useAuthStore(s => s.isLoading);
   const [activeTab, setActiveTab] = useState<TabName>('home');
   const [notifVisible, setNotifVisible] = useState(false);
+
+  const { isRefetching: isCatRefetching, refetch: refetchCategories } = useCategoriesQuery();
+  const { isRefetching: isCartRefetching, refetch: refetchCart } = useCartQuery();
+  const isRefreshing = isCatRefetching || isCartRefetching;
+
+  const handleHomeRefresh = useCallback(() => {
+    refetchCategories();
+    refetchCart();
+  }, [refetchCategories, refetchCart]);
 
   const handleTabChange = useCallback((tab: TabName) => {
     setActiveTab(tab);
@@ -99,7 +111,15 @@ export default function HomeScreen() {
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
-          scrollEventThrottle={16}>
+          scrollEventThrottle={16}
+          refreshControl={
+            <RefreshControl
+              refreshing={isRefreshing}
+              onRefresh={handleHomeRefresh}
+              colors={[Brand.primary]}
+              tintColor={Brand.primary}
+            />
+          }>
           <SearchBar />
           <HeroCarousel />
           <SectionDivider />
@@ -108,8 +128,8 @@ export default function HomeScreen() {
           <BrowseAppliance />
           <SectionDivider />
           <PopularProblems />
-          <SectionDivider />
-          <SpecialOffers />
+          {/* <SectionDivider /> */}
+          {/* <SpecialOffers /> */}
           <FooterPadding />
         </ScrollView>
         <LocationMovedBanner />

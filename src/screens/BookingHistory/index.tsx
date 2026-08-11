@@ -116,7 +116,6 @@ export const BookingHistoryScreen = memo(function BookingHistoryScreen() {
 
   const completedList = useMemo<CompletedBooking[]>(() => {
     const raw = completedQuery.data || [];
-    if (raw.length === 0) return COMPLETED_BOOKINGS; // Fallback to mock if empty initially
     return raw.map(mapBookingToCompleted);
   }, [completedQuery.data]);
 

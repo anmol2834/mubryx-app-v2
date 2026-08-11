@@ -1,6 +1,6 @@
 import { Brand, Radius, Spacing, Typography } from '@/constants/brand';
 import { memo, useCallback } from 'react';
-import { FlatList, Platform, StatusBar, StyleSheet, Text, View } from 'react-native';
+import { FlatList, Platform, RefreshControl, ScrollView, StatusBar, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { ActiveBooking } from '../types';
 import { LiveBookingCard } from './components/LiveBookingCard';
@@ -28,11 +28,11 @@ const ListFooter = memo(function ListFooter() {
   return <View style={{ height: Spacing.xxl }} />;
 });
 
-// ─── Main screen ──────────────────────────────────────────────────────────────
-
 interface Props {
   bookings: ActiveBooking[];
   isLoading: boolean;
+  isRefreshing?: boolean;
+  onRefresh?: () => void;
   onSelect: (bookingId: string) => void;
   onBookService: () => void;
 }
@@ -40,6 +40,8 @@ interface Props {
 export const LiveTrackingList = memo(function LiveTrackingList({
   bookings,
   isLoading,
+  isRefreshing = false,
+  onRefresh,
   onSelect,
   onBookService,
 }: Props) {
@@ -67,7 +69,20 @@ export const LiveTrackingList = memo(function LiveTrackingList({
     return (
       <View style={[s.root, { paddingTop: insets.top }]}>
         <StatusBar barStyle="dark-content" backgroundColor={Brand.white} translucent={false} />
-        <TrackEmptyState onBookService={onBookService} />
+        <ScrollView
+          contentContainerStyle={{ flexGrow: 1 }}
+          refreshControl={
+            onRefresh ? (
+              <RefreshControl
+                refreshing={isRefreshing}
+                onRefresh={onRefresh}
+                colors={[Brand.primary]}
+                tintColor={Brand.primary}
+              />
+            ) : undefined
+          }>
+          <TrackEmptyState onBookService={onBookService} />
+        </ScrollView>
       </View>
     );
   }
@@ -84,6 +99,16 @@ export const LiveTrackingList = memo(function LiveTrackingList({
         contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}
         showsVerticalScrollIndicator={false}
         removeClippedSubviews={false}
+        refreshControl={
+          onRefresh ? (
+            <RefreshControl
+              refreshing={isRefreshing}
+              onRefresh={onRefresh}
+              colors={[Brand.primary]}
+              tintColor={Brand.primary}
+            />
+          ) : undefined
+        }
       />
     </View>
   );

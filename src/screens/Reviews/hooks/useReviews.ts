@@ -24,6 +24,7 @@ export interface UseReviewsReturn {
 
   // UI state
   isLoading: boolean;
+  isRefreshing: boolean;
   activeFilter: FilterOption;
   sheetVisible: boolean;
   sheetMode: SheetMode;
@@ -36,6 +37,7 @@ export interface UseReviewsReturn {
   isSubmitting: boolean;
 
   // Actions
+  onRefresh: () => Promise<void>;
   setActiveFilter: (f: FilterOption) => void;
   openWriteSheet: () => void;
   openEditSheet: (review: MyReview) => void;
@@ -53,6 +55,7 @@ export function useReviews(isActive: boolean): UseReviewsReturn {
   const [personalStats, setPersonalStats] = useState<PersonalStats | null>(null);
   const [pendingService, setPendingService] = useState<CompletedService | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [activeFilter, setActiveFilter] = useState<FilterOption>('all');
   const [sheetVisible, setSheetVisible] = useState(false);
   const [sheetMode, setSheetMode] = useState<SheetMode>('write');
@@ -67,32 +70,43 @@ export function useReviews(isActive: boolean): UseReviewsReturn {
   const dismissedIds = useRef<Set<string>>(new Set());
   const hasLoaded = useRef(false);
 
+  const loadData = useCallback(async () => {
+    const [reviews, stats, pending] = await Promise.all([
+      fetchMyReviews(CURRENT_USER_ID),
+      fetchPersonalStats(CURRENT_USER_ID),
+      fetchPendingReviews(CURRENT_USER_ID),
+    ]);
+    setMyReviews(reviews);
+    setPersonalStats(stats);
+    const first = pending[0] ?? null;
+    if (first) {
+      setPendingService(first);
+    }
+  }, []);
+
+  const handleRefresh = useCallback(async () => {
+    setIsRefreshing(true);
+    try {
+      await loadData();
+    } catch {
+      // Keep state
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [loadData]);
+
   useEffect(() => {
     if (!isActive || hasLoaded.current) return;
     hasLoaded.current = true;
     let cancelled = false;
     async function load() {
       setIsLoading(true);
-      const [reviews, stats, pending] = await Promise.all([
-        fetchMyReviews(CURRENT_USER_ID),
-        fetchPersonalStats(CURRENT_USER_ID),
-        fetchPendingReviews(CURRENT_USER_ID),
-      ]);
-      if (cancelled) return;
-      setMyReviews(reviews);
-      setPersonalStats(stats);
-      const first = pending[0] ?? null;
-      if (first) {
-        setPendingService(first);
-        setTimeout(() => {
-          if (!cancelled) { setSheetMode('write'); setSheetVisible(true); }
-        }, 400);
-      }
-      setIsLoading(false);
+      await loadData();
+      if (!cancelled) setIsLoading(false);
     }
     load();
     return () => { cancelled = true; };
-  }, [isActive]);
+  }, [isActive, loadData]);
 
   const filteredReviews = applyFilter(myReviews, activeFilter);
 
@@ -228,6 +242,8 @@ export function useReviews(isActive: boolean): UseReviewsReturn {
     personalStats,
     pendingService,
     isLoading,
+    isRefreshing,
+    onRefresh: handleRefresh,
     activeFilter,
     sheetVisible,
     sheetMode,

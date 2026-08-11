@@ -4,6 +4,7 @@ import { getCategoryAssetSource } from '@/utils/categoryImages';
 import { useRouter } from 'expo-router';
 import { memo, useCallback, useMemo } from 'react';
 import { Dimensions, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { BrowseApplianceSkeleton } from '../Skeletons/HomeServiceSkeleton';
 
 const { width: SCREEN_W } = Dimensions.get('window');
 const CARD_W = SCREEN_W * 0.44;
@@ -45,9 +46,11 @@ const ApplianceCard = memo(function ApplianceCard({
     </View>
   );
 });
+
 export const BrowseAppliance = memo(function BrowseAppliance() {
   const router = useRouter();
-  const { data: apiCategories = [] } = useCategoriesQuery();
+  const { data: apiCategories = [], isLoading } = useCategoriesQuery();
+
   const appliancesList = useMemo(() => {
     if (!apiCategories || apiCategories.length === 0) {
       return [];
@@ -63,9 +66,14 @@ export const BrowseAppliance = memo(function BrowseAppliance() {
         slug: cat.slug,
       }));
   }, [apiCategories]);
+
   const handleCardPress = useCallback((item: any) => {
     router.push({ pathname: '/service-detail', params: { categoryId: item.id, slug: item.slug } });
   }, [router]);
+
+  if (isLoading) {
+    return <BrowseApplianceSkeleton />;
+  }
   return (
     <View style={styles.wrapper}>
       <View style={styles.header}>

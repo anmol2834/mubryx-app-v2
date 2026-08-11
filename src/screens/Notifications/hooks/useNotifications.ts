@@ -25,10 +25,12 @@ export interface UseNotificationsReturn {
 
   // UI state
   isLoading: boolean;
+  isRefreshing: boolean;
   hasError: boolean;
   activeFilter: NotificationCategory;
 
   // Actions
+  onRefresh: () => Promise<void>;
   setActiveFilter: (c: NotificationCategory) => void;
   handleMarkRead: (id: string) => void;
   handleMarkAllRead: () => void;
@@ -49,6 +51,7 @@ export function useNotifications(
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [summaryStats, setSummaryStats]   = useState<NotificationSummaryStats | null>(null);
   const [isLoading, setIsLoading]         = useState(true);
+  const [isRefreshing, setIsRefreshing]   = useState(false);
   const [hasError, setHasError]           = useState(false);
   const [activeFilter, setActiveFilter]   = useState<NotificationCategory>('all');
 
@@ -68,6 +71,22 @@ export function useNotifications(
       setHasError(true);
     } finally {
       setIsLoading(false);
+    }
+  }, []);
+
+  const handleRefresh = useCallback(async () => {
+    setIsRefreshing(true);
+    try {
+      const [notifs, stats] = await Promise.all([
+        fetchNotifications(CURRENT_USER_ID),
+        fetchSummaryStats(CURRENT_USER_ID),
+      ]);
+      setNotifications(notifs);
+      setSummaryStats(stats);
+    } catch {
+      // Keep state
+    } finally {
+      setIsRefreshing(false);
     }
   }, []);
 
@@ -151,6 +170,8 @@ export function useNotifications(
     summaryStats,
     unreadCount,
     isLoading,
+    isRefreshing,
+    onRefresh: handleRefresh,
     hasError,
     activeFilter,
     setActiveFilter,

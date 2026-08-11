@@ -15,6 +15,7 @@ import { Brand, Spacing } from '@/constants/brand';
 import { memo, useCallback } from 'react';
 import {
     Platform,
+    RefreshControl,
     ScrollView,
     StatusBar,
     StyleSheet,
@@ -87,6 +88,8 @@ export const NotificationsScreen = memo(function NotificationsScreen({
     groups,
     unreadCount,
     isLoading,
+    isRefreshing,
+    onRefresh,
     hasError,
     activeFilter,
     setActiveFilter,
@@ -142,7 +145,15 @@ export const NotificationsScreen = memo(function NotificationsScreen({
             ]}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
-            scrollEventThrottle={16}>
+            scrollEventThrottle={16}
+            refreshControl={
+              <RefreshControl
+                refreshing={isRefreshing}
+                onRefresh={onRefresh}
+                colors={[Brand.primary]}
+                tintColor={Brand.primary}
+              />
+            }>
 
             {/* Notification groups */}
 

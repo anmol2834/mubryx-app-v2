@@ -1,6 +1,6 @@
 import { Brand, Spacing } from '@/constants/brand';
 import { memo, useCallback } from 'react';
-import { FlatList, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { FlatList, Platform, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 import { EmptyReviews } from './components/EmptyReviews';
@@ -73,6 +73,14 @@ export const ReviewsScreen = memo(function ReviewsScreen({ isActive }: Props) {
           showsVerticalScrollIndicator={false}
           scrollEventThrottle={16}
           removeClippedSubviews={Platform.OS === 'android'}
+          refreshControl={
+            <RefreshControl
+              refreshing={r.isRefreshing}
+              onRefresh={r.onRefresh}
+              colors={[Brand.primary]}
+              tintColor={Brand.primary}
+            />
+          }
         />
       )}
 

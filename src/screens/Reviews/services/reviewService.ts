@@ -29,26 +29,39 @@ export interface EditReviewPayload {
   isAnonymous: boolean;
 }
 
-// Future: GET /api/users/:id/reviews
-export async function fetchMyReviews(userId: string): Promise<MyReview[]> {
-  await new Promise((r) => setTimeout(r, 600));
-  // Filter by userId — when API is live, the server handles this
-  return MOCK_MY_REVIEWS.filter((r) => r.userId === userId);
-}
-
-// Future: GET /api/users/:id/review-stats
-export async function fetchPersonalStats(userId: string): Promise<PersonalStats> {
-  await new Promise((r) => setTimeout(r, 300));
-  void userId; // used by real API
-  return { ...MOCK_PERSONAL_STATS };
-}
-
-// Future: GET /api/users/:id/completed-services?reviewed=false
-export async function fetchPendingReviews(userId: string): Promise<CompletedService[]> {
+// GET /api/users/:id/reviews
+export async function fetchMyReviews(_userId: string): Promise<MyReview[]> {
   await new Promise((r) => setTimeout(r, 200));
-  return MOCK_COMPLETED_SERVICES.filter(
-    (s) => s.userId === userId && !s.reviewSubmitted && !s.dismissedInSession
-  );
+  return [];
+}
+
+// GET /api/users/:id/review-stats
+export async function fetchPersonalStats(userId: string): Promise<PersonalStats> {
+  await new Promise((r) => setTimeout(r, 100));
+  const reviews = await fetchMyReviews(userId);
+  if (!reviews || reviews.length === 0) {
+    return {
+      averageRating: 0,
+      totalReviews: 0,
+      photosUploaded: 0,
+      completedServices: 0,
+    };
+  }
+  const sum = reviews.reduce((acc, curr) => acc + curr.rating, 0);
+  const avg = Number((sum / reviews.length).toFixed(1));
+  const photos = reviews.reduce((acc, curr) => acc + (curr.images?.length || 0), 0);
+  return {
+    averageRating: avg,
+    totalReviews: reviews.length,
+    photosUploaded: photos,
+    completedServices: reviews.length,
+  };
+}
+
+// GET /api/users/:id/completed-services?reviewed=false
+export async function fetchPendingReviews(_userId: string): Promise<CompletedService[]> {
+  await new Promise((r) => setTimeout(r, 100));
+  return [];
 }
 
 // Future: POST /api/reviews

@@ -6,13 +6,14 @@ import { useServicesQuery } from '@/hooks/queries/useServicesQuery';
 import { useCategory } from '@/hooks/useCategory';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
-import { ScrollView, StatusBar, StyleSheet, View } from 'react-native';
+import { RefreshControl, ScrollView, StatusBar, StyleSheet, View } from 'react-native';
 import { BottomBookingBar } from './components/BottomBookingBar';
 import { ServiceCard } from './components/ServiceCard';
 import { ServiceHeader } from './components/ServiceHeader';
 import { ServiceOverview } from './components/ServiceOverview';
 import { ServiceSelectionHeader } from './components/ServiceSelectionHeader';
 import { TrustIndicators } from './components/TrustIndicators';
+import { ServiceDetailSkeleton } from './components/ServiceDetailSkeleton';
 
 export default function ServiceDetailScreen() {
   const router = useRouter();
@@ -23,7 +24,7 @@ export default function ServiceDetailScreen() {
   const categoryId = params.categoryId;
   const slug = params.slug ?? 'microwave';
 
-  const { data: apiServices = [] } = useServicesQuery({ categoryId });
+  const { data: apiServices = [], isLoading, isRefetching, refetch } = useServicesQuery({ categoryId });
   const { category: apiCategory } = useCategory(categoryId);
 
   const data: ServiceDetailData = useMemo(() => {
@@ -159,23 +160,37 @@ export default function ServiceDetailScreen() {
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled">
-        <ServiceOverview data={data} />
-        <TrustIndicators />
+        keyboardShouldPersistTaps="handled"
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefetching}
+            onRefresh={refetch}
+            colors={[Brand.primary]}
+            tintColor={Brand.primary}
+          />
+        }>
+        {isLoading ? (
+          <ServiceDetailSkeleton />
+        ) : (
+          <>
+            <ServiceOverview data={data} />
+            <TrustIndicators />
 
-        <ServiceSelectionHeader serviceTitle={data.title} selectedCount={selectedIds.size} />
+            <ServiceSelectionHeader serviceTitle={data.title} selectedCount={selectedIds.size} />
 
-        <View style={styles.cardList}>
-          {data.services.map((item: any, index: number) => (
-            <ServiceCard
-              key={item.id}
-              item={item}
-              selected={selectedIds.has(item.id)}
-              onToggle={handleToggle}
-              index={index}
-            />
-          ))}
-        </View>
+            <View style={styles.cardList}>
+              {data.services.map((item: any, index: number) => (
+                <ServiceCard
+                  key={item.id}
+                  item={item}
+                  selected={selectedIds.has(item.id)}
+                  onToggle={handleToggle}
+                  index={index}
+                />
+              ))}
+            </View>
+          </>
+        )}
 
         <View style={styles.bottomPad} />
       </ScrollView>

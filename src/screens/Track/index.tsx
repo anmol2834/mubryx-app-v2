@@ -30,7 +30,7 @@ export const TrackScreen = memo(function TrackScreen({
   onBack,
   onBookService,
 }: Props) {
-  const { view, bookings, openDetail, backFromDetail } = useTrackRouter(isActive);
+  const { view, bookings, isRefreshing, onRefresh, openDetail, backFromDetail } = useTrackRouter(isActive);
 
   // Find the prefetched booking from the in-memory list to avoid a redundant
   // service call when navigating from list → detail.
@@ -67,6 +67,8 @@ export const TrackScreen = memo(function TrackScreen({
     <LiveTrackingList
       bookings={bookings}
       isLoading={view.kind === 'loading'}
+      isRefreshing={isRefreshing}
+      onRefresh={onRefresh}
       onSelect={openDetail}
       onBookService={onBookService}
     />
