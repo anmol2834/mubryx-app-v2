@@ -70,9 +70,10 @@ export async function createBooking(
     bookingNumber: booking.bookingNumber,
     otp,
     status: 'assigned',
-    engineer,
-    estimatedArrival: '~18 min',
-    stages: buildInitialStages(engineer.name),
+    engineer: null,
+    estimatedArrival: 'Pending Assignment',
+    stages: [],
+
     serviceName,
     serviceIcon: '🔧',
     scheduledDate,

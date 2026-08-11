@@ -13,6 +13,7 @@ import { CartResponse } from '@/types/cart';
 export function useCartQuery() {
   const user = useAuthStore((s) => s.user);
   const tokens = useAuthStore((s) => s.tokens);
+  const authReady = !useAuthStore((s) => s.isLoading);
   const isAuthenticated = !!(user?.id && tokens?.accessToken);
 
   const guestItems = useGuestCartStore((s) => s.items);
@@ -52,7 +53,7 @@ export function useCartQuery() {
   const query = useQuery<CartResponse, Error>({
     queryKey,
     queryFn: async () => {
-      if (!isAuthenticated) {
+      if (!isAuthenticated || !authReady) {
         return guestCart;
       }
       const res = await cartService.getCart();
@@ -61,7 +62,7 @@ export function useCartQuery() {
       }
       return res.data;
     },
-    enabled: isAuthenticated || isGuestHydrated,
+    enabled: isAuthenticated ? authReady : isGuestHydrated,
     staleTime: 5 * 60 * 1000, // 5 mins fresh
     gcTime: 30 * 60 * 1000,
     refetchOnMount: false,

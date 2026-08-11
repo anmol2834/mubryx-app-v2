@@ -118,6 +118,7 @@ const otp_s = StyleSheet.create({
 
 const EngineerCard = memo(function EngineerCard({ result }: { result: BookingResult }) {
   const { engineer } = result;
+  if (!engineer) return null;
   return (
     <View style={eng.card}>
       <View style={eng.avatarSection}>
@@ -342,7 +343,7 @@ export const TechnicianAssignedSheet = memo(function TechnicianAssignedSheet({
   }, [visible]);
 
   const handleCall = useCallback(() => {
-    Alert.alert('Call Technician', `Calling ${result?.engineer.name ?? 'technician'}...`);
+    Alert.alert('Call Technician', `Calling ${result?.engineer?.name ?? 'technician'}...`);
   }, [result]);
 
   const handleChat = useCallback(() => {
@@ -376,10 +377,16 @@ export const TechnicianAssignedSheet = memo(function TechnicianAssignedSheet({
             <View style={s.successIconWrap}>
               <Text style={s.successEmoji}>🎉</Text>
             </View>
-            <Text style={s.successTitle}>Great News!</Text>
+            <Text style={s.successTitle}>{result.engineer ? 'Great News!' : 'Booking Confirmed!'}</Text>
             <Text style={s.successSub}>
-              <Text style={s.successName}>{result.engineer.name}</Text>
-              {' '}has accepted your booking and is on the way.
+              {result.engineer ? (
+                <>
+                  <Text style={s.successName}>{result.engineer.name}</Text>
+                  {' '}has accepted your booking and is on the way.
+                </>
+              ) : (
+                'We are finding the best technician nearby for you.'
+              )}
             </Text>
             <View style={s.bookingIdRow}>
               <Text style={s.bookingIdLabel}>Booking ID</Text>
@@ -391,10 +398,10 @@ export const TechnicianAssignedSheet = memo(function TechnicianAssignedSheet({
           <OTPCard otp={result.otp} />
 
           {/* Engineer */}
-          <EngineerCard result={result} />
+          {result.engineer && <EngineerCard result={result} />}
 
           {/* Quick Actions */}
-          <QuickActions onCall={handleCall} onChat={handleChat} onTrack={onTrack} />
+          {result.engineer && <QuickActions onCall={handleCall} onChat={handleChat} onTrack={onTrack} />}
 
           {/* Timeline */}
           <MiniTimeline stages={result.stages} />

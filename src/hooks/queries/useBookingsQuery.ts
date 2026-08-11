@@ -6,6 +6,7 @@ import type { Booking } from '@/types/booking';
 export function useBookingsQuery(tab?: 'upcoming' | 'completed') {
   const user = useAuthStore((s) => s.user);
   const tokens = useAuthStore((s) => s.tokens);
+  const authReady = !useAuthStore((s) => s.isLoading);
   const isAuthenticated = !!(user?.id && tokens?.accessToken);
 
   return useQuery<Booking[]>({
@@ -17,7 +18,7 @@ export function useBookingsQuery(tab?: 'upcoming' | 'completed') {
       }
       return res.data;
     },
-    enabled: isAuthenticated,
+    enabled: isAuthenticated && authReady,
     staleTime: 30 * 1000,        // 30s — bookings refresh frequently
     gcTime: 5 * 60 * 1000,       // 5 min cache
     refetchOnMount: true,         // Always check for new bookings on screen mount

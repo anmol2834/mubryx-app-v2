@@ -44,7 +44,7 @@ export interface BookingResult {
   bookingNumber: string;
   otp: string;
   status: BookingFlowStatus;
-  engineer: BookingFlowEngineer;
+  engineer: BookingFlowEngineer | null;
   estimatedArrival: string;
   stages: TrackStage[];
   serviceName: string;

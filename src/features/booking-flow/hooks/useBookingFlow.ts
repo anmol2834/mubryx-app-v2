@@ -7,6 +7,7 @@ import {
 } from '../constants';
 import { cancelBooking, createBooking } from '../services/bookingService';
 import { queryClient } from '@/api/queryClient';
+import { socketManager } from '@/lib/socket';
 import { useAuthStore } from '@/store/authStore';
 import type {
   BookingFlowStatus,
@@ -151,13 +152,31 @@ export function useBookingFlow(): UseBookingFlowReturn {
       timersRef.current.push(activateTimer, completeTimer);
     });
 
-    // Safety timeout — if something goes wrong after 12s
-    const safetyTimer = setTimeout(() => {
-      if (cancelledRef.current) return;
-      onError('Matching timed out. Please try again.');
-    }, 12_000);
-    timersRef.current.push(safetyTimer);
+    // We do NOT time out automatically on the frontend anymore;
+    // backend will orchestrate timeout / reassignment.
   }, []);
+
+  // Socket Listener for Booking Assignment
+  useEffect(() => {
+    const socket = socketManager.connect();
+    if (!socket) return;
+
+    const onAssigned = (data: any) => {
+      // Check if the assigned booking matches the current one we are searching for
+      if (bookingResult?.bookingId === data?.bookingId) {
+        // We received real-time confirmation that technician accepted!
+        // Update local result and transition to success sheet
+        setBookingResult(prev => prev ? { ...prev, ...data } : data);
+        setActiveSheet('assigned');
+      }
+    };
+
+    socket.on('booking:assigned', onAssigned);
+
+    return () => {
+      socket.off('booking:assigned', onAssigned);
+    };
+  }, [bookingResult?.bookingId]);
 
   // ─── Confirm booking — entry point ───────────────────────────────────────
 
@@ -177,12 +196,9 @@ export function useBookingFlow(): UseBookingFlowReturn {
     const tryTransition = () => {
       if (apiDone && animDone && !cancelledRef.current) {
         if (apiResult) {
+          // Set the result and transition immediately to success sheet
           setBookingResult(apiResult);
-          // Small pause before switching sheets for a polished feel
-          const t = setTimeout(() => {
-            if (!cancelledRef.current) setActiveSheet('assigned');
-          }, 400);
-          timersRef.current.push(t);
+          setActiveSheet('assigned');
         } else {
           setHasError(true);
           setErrorMessage('Could not assign a technician. Please try again.');
