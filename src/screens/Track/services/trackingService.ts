@@ -8,8 +8,8 @@ function mapApiBookingToActiveBooking(b: any): ActiveBooking {
   const currentStage: TrackStageId = b.status === 'COMPLETED' ? 'completed' : b.status === 'IN_PROGRESS' ? 'started' : 'confirmed';
 
   return {
-    id: b._id || b.id,
-    bookingId: b._id || b.id,
+    id: b.bookingId || b.id || b._id,
+    bookingId: b.bookingId || b.id || b._id,
     serviceName: serviceTitle,
     serviceIcon: '🔧',
     applianceName: serviceTitle,
