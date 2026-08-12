@@ -113,16 +113,29 @@ export function useCheckout() {
     total: 0,
   };
 
+  const subtotal = useMemo(() => {
+    if (items.length > 0) {
+      return items.reduce((sum, i) => sum + (i.unitPrice * i.quantity), 0);
+    }
+    return summary.subtotal || 0;
+  }, [items, summary.subtotal]);
+
+  const discount = summary.discount || 0;
+  const taxableAmount = Math.max(0, subtotal - discount);
+  const gst = Math.round(taxableAmount * 0.18 * 100) / 100;
+  const grandTotal = Math.round((taxableAmount + gst) * 100) / 100;
+
   return {
-    // Cart snapshot & server totals
+    // Cart snapshot & calculated totals
     items,
     itemCount: items.reduce((sum, i) => sum + i.quantity, 0),
-    subtotal: summary.subtotal,
-    discount: summary.discount,
-    tax: summary.tax,
+    subtotal,
+    discount,
+    tax: gst,
+    gst,
     platformFee: summary.platformFee,
-    total: summary.total,
-    grandTotal: summary.total,
+    total: grandTotal,
+    grandTotal,
     appliedCoupon: cart?.appliedCoupon || null,
 
     // Service Address

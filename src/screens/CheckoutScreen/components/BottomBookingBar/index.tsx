@@ -24,11 +24,26 @@ function LockIcon() {
   );
 }
 
+function ChevronUpIcon() {
+  return (
+    <Svg width={16} height={16} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M18 15l-6-6-6 6"
+        stroke={Brand.primary}
+        strokeWidth={2.2}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </Svg>
+  );
+}
+
 interface BottomBookingBarProps {
   grandTotal: number;
   itemCount: number;
   couponDiscount: number;
   onConfirm: () => void;
+  onOpenBreakdown?: () => void;
 }
 
 export const BottomBookingBar = memo(function BottomBookingBar({
@@ -36,6 +51,7 @@ export const BottomBookingBar = memo(function BottomBookingBar({
   itemCount,
   couponDiscount,
   onConfirm,
+  onOpenBreakdown,
 }: BottomBookingBarProps) {
   const insets = useSafeAreaInsets();
   const hasItems = itemCount > 0;
@@ -44,12 +60,24 @@ export const BottomBookingBar = memo(function BottomBookingBar({
     <View style={[styles.wrapper, { paddingBottom: insets.bottom + 8 }]}>
       {/* Price summary row */}
       <View style={styles.summaryRow}>
-        <View style={styles.priceCol}>
-          <Text style={styles.totalLabel}>Total Amount</Text>
-          <Text style={styles.totalPrice}>
-            {hasItems ? `₹${grandTotal}` : '—'}
-          </Text>
-        </View>
+        <Pressable
+          style={({ pressed }) => [styles.pricePressable, pressed && styles.pricePressed]}
+          onPress={hasItems ? onOpenBreakdown : undefined}
+          accessibilityLabel="View price breakdown">
+          <View style={styles.priceCol}>
+            <Text style={styles.totalLabel}>Total Amount</Text>
+            <View style={styles.priceWithChevron}>
+              <Text style={styles.totalPrice}>
+                {hasItems ? `₹${grandTotal}` : '—'}
+              </Text>
+              {hasItems && (
+                <View style={styles.chevronWrap}>
+                  <ChevronUpIcon />
+                </View>
+              )}
+            </View>
+          </View>
+        </Pressable>
         {couponDiscount > 0 && (
           <View style={styles.savingsBadge}>
             <Text style={styles.savingsText}>Saving ₹{couponDiscount}</Text>
@@ -105,7 +133,28 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
   },
+  pricePressable: {
+    borderRadius: Radius.md,
+    paddingVertical: 2,
+    paddingRight: Spacing.sm,
+  },
+  pricePressed: {
+    opacity: 0.7,
+  },
   priceCol: { gap: 1 },
+  priceWithChevron: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  chevronWrap: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: Brand.primarySoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   totalLabel: {
     ...Typography.caption,
     color: Brand.textMuted,
