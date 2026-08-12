@@ -8,8 +8,8 @@ export const MATCHING_STEPS: MatchingStep[] = [
   { id: 'confirming',           label: 'Confirming Assignment',         status: 'pending' },
 ];
 
-// Duration (ms) each step stays "active" before completing
-export const STEP_DURATIONS_MS = [900, 800, 700, 900, 700];
+// Duration (ms) each step stays "active" before completing (total 2.5s)
+export const STEP_DURATIONS_MS = [500, 500, 500, 500, 500];
 
 export const INITIAL_METRICS: MatchingMetrics = {
   searchRadius:     '5 km',

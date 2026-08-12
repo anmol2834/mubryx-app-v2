@@ -22,6 +22,7 @@ export interface ProfileState {
   logoutSheetVisible: boolean;
   biometricEnabled: boolean;
   editingAddressId: string | null;
+  isSavingAddress: boolean;
 }
 
 export interface ProfileActions {
@@ -225,6 +226,7 @@ export function useProfile(onNavigateToTrack?: () => void): ProfileState & Profi
     logoutSheetVisible,
     biometricEnabled,
     editingAddressId,
+    isSavingAddress: createAddress.isPending || updateAddress.isPending,
     onRefresh,
     onEditProfile,
     onNotifications,

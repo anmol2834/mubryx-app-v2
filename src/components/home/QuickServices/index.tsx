@@ -35,9 +35,21 @@ const ServiceCard = memo(function ServiceCard({
   );
 });
 
+import { useEffect, useState } from 'react';
+
 export const QuickServices = memo(function QuickServices() {
   const router = useRouter();
-  const { data: apiCategories = [], isLoading } = useCategoriesQuery();
+  const { data: apiCategories = [], isLoading: isQueryLoading } = useCategoriesQuery();
+  const [isTimerLoading, setIsTimerLoading] = useState(true);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsTimerLoading(false);
+    }, 3500);
+    return () => clearTimeout(timer);
+  }, []);
+
+  const isLoading = isQueryLoading || isTimerLoading;
 
   const displayServices = useMemo(() => {
     if (!apiCategories || apiCategories.length === 0) {

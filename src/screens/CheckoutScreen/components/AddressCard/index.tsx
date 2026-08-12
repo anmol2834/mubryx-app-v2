@@ -86,9 +86,6 @@ export const AddressCard = memo(function AddressCard({
         <View style={styles.headerTexts}>
           <View style={styles.labelRow}>
             <Text style={styles.defaultLabel}>Service Address</Text>
-            <View style={styles.homeBadge}>
-              <Text style={styles.homeBadgeText}>{label}</Text>
-            </View>
           </View>
           <Text style={styles.areaLabel} numberOfLines={1}>
             {label}

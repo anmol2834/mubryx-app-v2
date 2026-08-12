@@ -9,10 +9,14 @@ import '@/global.css';
 import { Redirect, Stack } from 'expo-router';
 import { useEffect } from 'react';
 import * as SplashScreen from 'expo-splash-screen';
-import { View } from 'react-native';
+import { LogBox, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
+
+LogBox.ignoreLogs([
+  'Cannot connect to Expo CLI',
+]);
 
 SplashScreen.preventAutoHideAsync();
 

@@ -119,6 +119,7 @@ export const ProfileScreen = memo(function ProfileScreen({ onNavigateToTrack }: 
         <AddressesSection
           addresses={profile.addresses}
           onEdit={handleEditAddress}
+          isSaving={profile.isSavingAddress}
         />
 
         <Divider />

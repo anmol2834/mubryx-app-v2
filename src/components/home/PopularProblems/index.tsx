@@ -80,9 +80,27 @@ const ProblemCard = memo(function ProblemCard({
     </View>
   );
 });
+import { useEffect, useState } from 'react';
 import { useServicesQuery } from '@/hooks/queries/useServicesQuery';
+import { PopularProblemsSkeleton } from '../Skeletons/HomeServiceSkeleton';
+
 export const PopularProblems = memo(function PopularProblems() {
-  const { data: popularServices = [] } = useServicesQuery({ isPopular: true });
+  const { data: popularServices = [], isLoading: isQueryLoading } = useServicesQuery({ isPopular: true });
+  const [isTimerLoading, setIsTimerLoading] = useState(true);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsTimerLoading(false);
+    }, 3500);
+    return () => clearTimeout(timer);
+  }, []);
+
+  const isLoading = isQueryLoading || isTimerLoading;
+
+  if (isLoading) {
+    return <PopularProblemsSkeleton />;
+  }
+
   if (!popularServices || popularServices.length === 0) {
     return null; // Do not render if there are no popular services
   }

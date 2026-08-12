@@ -79,14 +79,6 @@ export function useTrackRouter(isActive: boolean): UseTrackRouterReturn {
     load();
   }, [isActive, load]);
 
-  // Re-fetch when tab is re-activated after being hidden (e.g. user completes
-  // a booking and returns to track tab) — reset the hasLoaded guard
-  useEffect(() => {
-    if (!isActive) {
-      hasLoaded.current = false;
-    }
-  }, [isActive]);
-
   const openDetail = useCallback((bookingId: string) => {
     setView({ kind: 'detail', bookingId });
   }, []);
