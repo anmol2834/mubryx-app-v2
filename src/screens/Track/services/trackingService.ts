@@ -37,7 +37,7 @@ function mapApiBookingToActiveBooking(b: any): ActiveBooking {
 
   return {
     id: b.bookingId || b._id || b.id,
-    bookingId: b.bookingId || b._id || b.id,
+    bookingId: b.bookingNumber || b.bookingId || b._id || b.id,
     serviceName: serviceTitle,
     serviceIcon: '🔧',
     applianceName: serviceTitle,
@@ -63,6 +63,8 @@ function mapApiBookingToActiveBooking(b: any): ActiveBooking {
     landmark: b.address?.landmark || '',
     contactPerson: b.address?.contactPerson || 'Customer',
     contactPhone: b.address?.contactPhone || '',
+    otp: b.otp || null,
+    happyCode: b.happyCode || null,
     stages: [
       { id: 'confirmed', title: 'Booking Confirmed', description: 'Service confirmed', timestamp: b.createdAt || '', status: getStageStatus('confirmed') },
       { id: 'assigned', title: 'Technician Assigned', description: b.technician?.name ? `${b.technician.name} assigned` : 'Assigning technician', timestamp: null, status: getStageStatus('assigned') },

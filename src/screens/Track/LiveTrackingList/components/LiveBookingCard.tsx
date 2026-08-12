@@ -69,7 +69,7 @@ export const LiveBookingCard = memo(function LiveBookingCard({ booking, rank, on
   const applianceBg  = APPLIANCE_COLORS[booking.serviceIcon]?.bg ?? Brand.surface;
   const isTopRanked  = rank === 1;
 
-  const handlePress = useCallback(() => onPress(booking.bookingId), [booking.bookingId, onPress]);
+  const handlePress = useCallback(() => onPress(booking.id), [booking.id, onPress]);
 
   return (
     <Pressable

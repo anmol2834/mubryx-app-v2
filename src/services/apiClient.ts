@@ -126,6 +126,7 @@ export async function apiFetch<T = any>(
       headers: requestHeaders,
       body: body ? JSON.stringify(body) : undefined,
       signal: internalController.signal,
+      cache: 'no-store',
     });
 
     if (timerId) clearTimeout(timerId);

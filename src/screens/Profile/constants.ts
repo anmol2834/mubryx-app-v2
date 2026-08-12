@@ -83,6 +83,8 @@ export interface ActiveBooking {
   contactPerson: string;
   contactPhone: string;
   stages: TrackStage[];
+  otp?: string | null;
+  happyCode?: string | null;
 }
 
 // ─── Saved Address ────────────────────────────────────────────────────────────
