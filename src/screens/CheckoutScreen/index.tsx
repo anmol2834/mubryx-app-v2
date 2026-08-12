@@ -17,6 +17,7 @@ import { OffersCoupons } from './components/OffersCoupons';
 import { PaymentMethods } from './components/PaymentMethods';
 import { ScheduleCard, ScheduleSheet } from './components/ScheduleSelector';
 import { ServiceList } from './components/ServiceList';
+import { PriceBreakdownModal } from './components/PriceBreakdownModal';
 import { useCartQuery } from '@/hooks/queries/useCartQuery';
 import { useCartMutations } from '@/hooks/mutations/useCartMutations';
 import { useAddressMutations } from '@/hooks/mutations/useAddressMutations';
@@ -39,6 +40,7 @@ export default function CheckoutScreen() {
   const { createAddress, setDefaultAddress } = useAddressMutations();
 
   const [sheetVisible, setSheetVisible] = useState(false);
+  const [priceBreakdownVisible, setPriceBreakdownVisible] = useState(false);
   const bookingFlow = useBookingFlow();
 
   const addressSelectorRef = useRef<BottomSheetModal>(null);
@@ -274,6 +276,18 @@ export default function CheckoutScreen() {
         itemCount={checkout.itemCount}
         couponDiscount={checkout.couponDiscount}
         onConfirm={handleConfirmBooking}
+        onOpenBreakdown={() => setPriceBreakdownVisible(true)}
+      />
+
+      {/* Price Breakdown Modal */}
+      <PriceBreakdownModal
+        visible={priceBreakdownVisible}
+        onClose={() => setPriceBreakdownVisible(false)}
+        items={checkout.items}
+        subtotal={checkout.subtotal}
+        gst={checkout.gst}
+        discount={checkout.couponDiscount}
+        grandTotal={checkout.grandTotal}
       />
 
       {/* Booking Flow Sheets */}
