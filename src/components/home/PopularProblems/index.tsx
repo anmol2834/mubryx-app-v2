@@ -91,7 +91,7 @@ export const PopularProblems = memo(function PopularProblems() {
   useEffect(() => {
     const timer = setTimeout(() => {
       setIsTimerLoading(false);
-    }, 3500);
+    }, 2200);
     return () => clearTimeout(timer);
   }, []);
 

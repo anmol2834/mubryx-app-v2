@@ -57,7 +57,7 @@ export const BrowseAppliance = memo(function BrowseAppliance() {
   useEffect(() => {
     const timer = setTimeout(() => {
       setIsTimerLoading(false);
-    }, 3500);
+    }, 2200);
     return () => clearTimeout(timer);
   }, []);
 

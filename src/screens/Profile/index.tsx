@@ -49,6 +49,12 @@ export const ProfileScreen = memo(function ProfileScreen({ onNavigateToTrack }: 
       router.push('/help-center');
     } else if (id === 'call') {
       Linking.openURL('tel:+919875134775');
+    } else if (id === 'terms') {
+      Linking.openURL('https://mubryx-kv2x.vercel.app/terms-and-conditions');
+    } else if (id === 'privacy') {
+      Linking.openURL('https://mubryx-kv2x.vercel.app/privacy-policy');
+    } else if (id === 'refund') {
+      Linking.openURL('https://mubryx-kv2x.vercel.app/privacy-policy');
     } else {
       profile.onSettingsRowPress(id);
     }

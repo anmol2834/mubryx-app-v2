@@ -16,6 +16,8 @@ import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 
 LogBox.ignoreLogs([
   'Cannot connect to Expo CLI',
+  "Can't perform a React state update on a component that hasn't mounted yet",
+  "React state update on a component that hasn't mounted yet",
 ]);
 
 SplashScreen.preventAutoHideAsync();
@@ -53,7 +55,10 @@ export default function RootLayout() {
   const hydrateSession = useAuthStore(s => s.hydrateSession);
   
   useEffect(() => {
-    hydrateSession();
+    const timer = setTimeout(() => {
+      hydrateSession();
+    }, 0);
+    return () => clearTimeout(timer);
   }, [hydrateSession]);
 
   return (
