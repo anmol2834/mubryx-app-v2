@@ -48,7 +48,7 @@ export interface BookingPricing {
   subtotal: number;
   discount: number;
   tax: number;
-  totalAmount: number;
+  total: number;
 }
 
 export interface BookingStatusHistoryEntry {
