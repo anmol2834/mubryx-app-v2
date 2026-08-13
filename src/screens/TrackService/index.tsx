@@ -1,6 +1,6 @@
 import { Brand } from '@/constants/brand';
-import { memo, useCallback, useState } from 'react';
-import { Alert, ScrollView, StatusBar, StyleSheet, View } from 'react-native';
+import { memo, useCallback } from 'react';
+import { Alert, RefreshControl, ScrollView, StatusBar, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MOCK_ACTIVE_BOOKING, type ActiveBooking } from '../Profile/constants';
 import { BookingStatusCard } from './components/BookingStatusCard';
@@ -17,11 +17,15 @@ const Divider = memo(function Divider() {
 interface Props {
   onBack: () => void;
   booking?: ActiveBooking;
+  isRefreshing?: boolean;
+  onRefresh?: () => void;
 }
 
 export const TrackServiceScreen = memo(function TrackServiceScreen({
   onBack,
   booking = MOCK_ACTIVE_BOOKING,
+  isRefreshing = false,
+  onRefresh,
 }: Props) {
   const insets = useSafeAreaInsets();
 
@@ -75,7 +79,17 @@ export const TrackServiceScreen = memo(function TrackServiceScreen({
         style={s.scroll}
         contentContainerStyle={[s.content, { paddingBottom: 48 + insets.bottom }]}
         showsVerticalScrollIndicator={false}
-        scrollEventThrottle={16}>
+        scrollEventThrottle={16}
+        refreshControl={
+          onRefresh ? (
+            <RefreshControl
+              refreshing={isRefreshing}
+              onRefresh={onRefresh}
+              colors={[Brand.primary]}
+              tintColor={Brand.primary}
+            />
+          ) : undefined
+        }>
 
         <BookingStatusCard booking={booking} />
 

@@ -6,7 +6,7 @@
 
 import { Brand, Spacing, Typography } from '@/constants/brand';
 import { memo, useCallback } from 'react';
-import { Alert, Pressable, ScrollView, StatusBar, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, RefreshControl, ScrollView, StatusBar, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // Re-use every existing TrackService component unchanged
@@ -66,7 +66,7 @@ export const TrackDetails = memo(function TrackDetails({
   onBack,
 }: Props) {
   const insets = useSafeAreaInsets();
-  const { booking, isLoading, hasError, retry } = useTrackDetail(bookingId, prefetchedBooking);
+  const { booking, isLoading, isRefreshing, hasError, onRefresh, retry } = useTrackDetail(bookingId, prefetchedBooking);
 
   const handleLiveLocation = useCallback(() => {
     Alert.alert('Live Location', 'Live map integration coming soon.');
@@ -109,7 +109,15 @@ export const TrackDetails = memo(function TrackDetails({
           style={s.scroll}
           contentContainerStyle={[s.content, { paddingBottom: 48 + insets.bottom }]}
           showsVerticalScrollIndicator={false}
-          scrollEventThrottle={16}>
+          scrollEventThrottle={16}
+          refreshControl={
+            <RefreshControl
+              refreshing={isRefreshing}
+              onRefresh={onRefresh}
+              colors={[Brand.primary]}
+              tintColor={Brand.primary}
+            />
+          }>
 
           <BookingStatusCard booking={booking} />
           <Divider />

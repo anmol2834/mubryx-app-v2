@@ -16,7 +16,9 @@ import { socketManager } from '@/lib/socket';
 export interface UseTrackDetailReturn {
   booking: ActiveBooking | null;
   isLoading: boolean;
+  isRefreshing: boolean;
   hasError: boolean;
+  onRefresh: () => Promise<void>;
   retry: () => void;
 }
 
@@ -24,9 +26,10 @@ export function useTrackDetail(
   bookingId: string,
   prefetched: ActiveBooking | null,
 ): UseTrackDetailReturn {
-  const [booking, setBooking]   = useState<ActiveBooking | null>(prefetched);
-  const [isLoading, setLoading] = useState(prefetched === null);
-  const [hasError, setError]    = useState(false);
+  const [booking, setBooking]           = useState<ActiveBooking | null>(prefetched);
+  const [isLoading, setLoading]         = useState(prefetched === null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [hasError, setError]            = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -41,6 +44,23 @@ export function useTrackDetail(
       setLoading(false);
     }
   }, [bookingId]);
+
+  const onRefresh = useCallback(async () => {
+    // Prevent duplicate refresh requests while a refresh or initial load is running
+    if (isRefreshing || isLoading) return;
+    setIsRefreshing(true);
+    try {
+      const data = await getTrackingByBookingId(bookingId);
+      if (data) {
+        setBooking(data);
+        setError(false);
+      }
+    } catch {
+      // Handle refresh errors gracefully without breaking the existing page
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [bookingId, isRefreshing, isLoading]);
 
   useEffect(() => {
     if (prefetched) {
@@ -74,5 +94,5 @@ export function useTrackDetail(
 
   const retry = useCallback(() => load(), [load]);
 
-  return { booking, isLoading, hasError, retry };
+  return { booking, isLoading, isRefreshing, hasError, onRefresh, retry };
 }
