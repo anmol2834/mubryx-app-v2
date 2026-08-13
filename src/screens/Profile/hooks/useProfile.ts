@@ -184,7 +184,11 @@ export function useProfile(onNavigateToTrack?: () => void): ProfileState & Profi
       eta: '30 mins',
       scheduledDate: (b as any).scheduledDate || 'Scheduled',
       scheduledTime: (b as any).scheduledSlot || 'Slot',
-      price: (b as any).totalAmount || (b as any).amount || 0,
+      price:
+        (b as any).pricing?.total ??
+        (b as any).totalAmount ??
+        (b as any).amount ??
+        (firstItem.lineTotal || firstItem.unitPrice || 0),
       paymentMethod: (b as any).paymentMethod || 'Online',
       warranty: '30 Days Warranty',
       estimatedDuration: '45 mins',
