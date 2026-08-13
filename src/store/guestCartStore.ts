@@ -19,8 +19,8 @@ interface GuestCartState {
 function calculateGuestCartResponse(items: CartItem[]): CartResponse {
   const itemCount = items.reduce((sum, i) => sum + i.quantity, 0);
   const subtotal = items.reduce((sum, i) => sum + i.pricing.lineTotal, 0);
-  const tax = Math.round(subtotal * 0.05);
-  const platformFee = items.length > 0 ? 49 : 0;
+  const tax = Math.round(subtotal * 0.18);
+  const platformFee = 0;
   const total = items.length > 0 ? subtotal + tax + platformFee : 0;
 
   return {

@@ -77,8 +77,8 @@ export function useCartMutations() {
         }
 
         const subtotal = newItems.reduce((sum, i) => sum + i.pricing.lineTotal, 0);
-        const tax = Math.round(subtotal * 0.05);
-        const platformFee = newItems.length > 0 ? 49 : 0;
+        const tax = Math.round(subtotal * 0.18);
+        const platformFee = 0;
         const total = subtotal + tax + platformFee;
 
         queryClient.setQueryData<CartResponse>(cartQueryKey, {
@@ -104,7 +104,7 @@ export function useCartMutations() {
     },
     onSuccess: (serverCart) => {
       if (isAuthenticated && serverCart) {
-        queryClient.setQueryData(cartQueryKey, serverCart);
+        queryClient.setQueryData(cartQueryKey, (old: any) => { if (!old || serverCart.version >= old.version) return serverCart; return old; });
       }
     },
   });
@@ -143,8 +143,8 @@ export function useCartMutations() {
           .filter(item => item.quantity > 0);
 
         const subtotal = newItems.reduce((sum, i) => sum + i.pricing.lineTotal, 0);
-        const tax = Math.round(subtotal * 0.05);
-        const platformFee = newItems.length > 0 ? 49 : 0;
+        const tax = Math.round(subtotal * 0.18);
+        const platformFee = 0;
         const total = subtotal + tax + platformFee;
 
         queryClient.setQueryData<CartResponse>(cartQueryKey, {
@@ -170,7 +170,7 @@ export function useCartMutations() {
     },
     onSuccess: (serverCart) => {
       if (isAuthenticated && serverCart) {
-        queryClient.setQueryData(cartQueryKey, serverCart);
+        queryClient.setQueryData(cartQueryKey, (old: any) => { if (!old || serverCart.version >= old.version) return serverCart; return old; });
       }
     },
   });
@@ -194,8 +194,8 @@ export function useCartMutations() {
       if (previousCart) {
         const newItems = previousCart.items.filter(i => i.id !== itemId && i.serviceId !== itemId);
         const subtotal = newItems.reduce((sum, i) => sum + i.pricing.lineTotal, 0);
-        const tax = Math.round(subtotal * 0.05);
-        const platformFee = newItems.length > 0 ? 49 : 0;
+        const tax = Math.round(subtotal * 0.18);
+        const platformFee = 0;
         const total = subtotal + tax + platformFee;
 
         queryClient.setQueryData<CartResponse>(cartQueryKey, {
@@ -221,7 +221,7 @@ export function useCartMutations() {
     },
     onSuccess: (serverCart) => {
       if (isAuthenticated && serverCart) {
-        queryClient.setQueryData(cartQueryKey, serverCart);
+        queryClient.setQueryData(cartQueryKey, (old: any) => { if (!old || serverCart.version >= old.version) return serverCart; return old; });
       }
     },
   });
@@ -239,7 +239,7 @@ export function useCartMutations() {
     },
     onSuccess: (serverCart) => {
       if (isAuthenticated && serverCart) {
-        queryClient.setQueryData(cartQueryKey, serverCart);
+        queryClient.setQueryData(cartQueryKey, (old: any) => { if (!old || serverCart.version >= old.version) return serverCart; return old; });
       }
     },
   });
@@ -268,7 +268,7 @@ export function useCartMutations() {
     },
     onSuccess: (serverCart) => {
       if (serverCart && isAuthenticated) {
-        queryClient.setQueryData(cartQueryKey, serverCart);
+        queryClient.setQueryData(cartQueryKey, (old: any) => { if (!old || serverCart.version >= old.version) return serverCart; return old; });
       }
     },
   });
