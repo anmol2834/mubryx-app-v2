@@ -85,6 +85,8 @@ export async function apiFetch<T = any>(
 
   const requestHeaders: Record<string, string> = {
     Accept: 'application/json',
+    'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
+    Pragma: 'no-cache',
     ...headers,
   };
 
@@ -124,6 +126,7 @@ export async function apiFetch<T = any>(
       headers: requestHeaders,
       body: body ? JSON.stringify(body) : undefined,
       signal: internalController.signal,
+      cache: 'no-store',
     });
 
     if (timerId) clearTimeout(timerId);

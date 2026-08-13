@@ -45,6 +45,7 @@ export default function CheckoutScreen() {
 
   const addressSelectorRef = useRef<BottomSheetModal>(null);
   const addressEditRef = useRef<BottomSheetModal>(null);
+  const idempotencyKeyRef = useRef<string | null>(null);
 
   // Automatically open Edit Address modal on mount if no address exists
   useEffect(() => {
@@ -122,9 +123,12 @@ export default function CheckoutScreen() {
       return;
     }
 
-    // 4. Build idempotency key — generated once per booking attempt.
-    //    On network retry, the SAME key is resent so backend returns the existing booking.
-    const idempotencyKey = `mbx-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
+    // 4. Build idempotency key — generated once per checkout session.
+    //    On network retry or multiple clicks, the SAME key is resent so backend returns the existing booking.
+    if (!idempotencyKeyRef.current) {
+      idempotencyKeyRef.current = `mbx-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
+    }
+    const idempotencyKey = idempotencyKeyRef.current;
 
     // 5. Build scheduledAt ISO string if scheduled
     let scheduledAt: string | null = null;

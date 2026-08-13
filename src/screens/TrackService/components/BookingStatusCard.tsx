@@ -136,6 +136,22 @@ export const BookingStatusCard = memo(function BookingStatusCard({ booking }: Pr
             <Text style={s.metaValue}>₹{booking.price}</Text>
           </View>
         </View>
+        {/* OTP / Happy Code Display */}
+        {booking.currentStage !== 'completed' && (
+          <View style={s.codeRow}>
+            {booking.currentStage === 'started' ? (
+              <>
+                <Text style={s.codeLabel}>Happy Code</Text>
+                <Text style={s.codeValue}>{booking.happyCode || '----'}</Text>
+              </>
+            ) : (
+              <>
+                <Text style={s.codeLabel}>Booking OTP</Text>
+                <Text style={s.codeValue}>{booking.otp || '----'}</Text>
+              </>
+            )}
+          </View>
+        )}
       </LinearGradient>
     </View>
   );
@@ -194,4 +210,11 @@ const s = StyleSheet.create({
   metaItem: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 5, justifyContent: 'center' },
   metaDivider: { width: 1, height: 16, backgroundColor: 'rgba(255,255,255,0.25)' },
   metaValue: { fontSize: 12, fontWeight: '600', color: Brand.white },
+  codeRow: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    backgroundColor: 'rgba(0,0,0,0.15)',
+    borderRadius: Radius.md, paddingVertical: 12, paddingHorizontal: Spacing.md, marginTop: 8,
+  },
+  codeLabel: { fontSize: 14, fontWeight: '600', color: 'rgba(255,255,255,0.9)' },
+  codeValue: { fontSize: 20, fontWeight: '800', color: Brand.white, letterSpacing: 6 },
 });

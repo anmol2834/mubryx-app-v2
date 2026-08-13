@@ -11,6 +11,8 @@ import { useCallback, useEffect, useState } from 'react';
 import { getTrackingByBookingId } from '../services/trackingService';
 import type { ActiveBooking } from '../types';
 
+import { socketManager } from '@/lib/socket';
+
 export interface UseTrackDetailReturn {
   booking: ActiveBooking | null;
   isLoading: boolean;
@@ -68,6 +70,27 @@ export function useTrackDetail(
     }
     load();
   }, [bookingId, prefetched, load]);
+
+  // Real-time synchronization
+  useEffect(() => {
+    const socket = socketManager.connect();
+    if (!socket) return;
+
+    const onStatusUpdate = (data: any) => {
+      // The backend emits events wrapped in RealtimeEventDto where the actual payload is inside the .data property
+      if (data?.data?.bookingId === bookingId) {
+        load();
+      }
+    };
+
+    socket.on('booking:status_changed', onStatusUpdate);
+    socket.on('booking:assigned', onStatusUpdate);
+
+    return () => {
+      socket.off('booking:status_changed', onStatusUpdate);
+      socket.off('booking:assigned', onStatusUpdate);
+    };
+  }, [bookingId, load]);
 
   const retry = useCallback(() => load(), [load]);
 
