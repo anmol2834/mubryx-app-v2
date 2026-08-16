@@ -18,7 +18,7 @@ interface GuestCartState {
 
 function calculateGuestCartResponse(items: CartItem[]): CartResponse {
   const itemCount = items.reduce((sum, i) => sum + i.quantity, 0);
-  const subtotal = items.reduce((sum, i) => sum + i.pricing.lineTotal, 0);
+  const subtotal = items.reduce((sum, i) => sum + (i.pricing?.lineTotal ?? i.lineTotal ?? 0), 0);
   const tax = Math.round(subtotal * 0.18);
   const platformFee = 0;
   const total = items.length > 0 ? subtotal + tax + platformFee : 0;
@@ -64,13 +64,30 @@ export const useGuestCartStore = create<GuestCartState>((set, get) => ({
 
   addItem: async (serviceId, quantity = 1, serviceData) => {
     const { items } = get();
-    const existingIndex = items.findIndex(i => i.serviceId === serviceId || i.id === serviceId);
+    const newCategoryId = serviceData?.categoryId;
+
+    // Single-Category Cart Isolation:
+    // If incoming item belongs to a different category, reset existing items
+    let currentItems = items;
+    if (newCategoryId && items.length > 0) {
+      const hasDifferentCategory = items.some((i) => {
+        const itemCat = i.service?.categoryId || i.categoryId;
+        return !itemCat || itemCat !== newCategoryId;
+      });
+      if (hasDifferentCategory) {
+        currentItems = [];
+      }
+    }
+
+    const existingIndex = currentItems.findIndex(
+      (i) => i.serviceId === serviceId || i.id === serviceId
+    );
 
     let updatedItems: CartItem[];
     const unitPrice = serviceData?.discountPrice ?? serviceData?.price ?? 499;
 
     if (existingIndex >= 0) {
-      updatedItems = items.map((item, idx) =>
+      updatedItems = currentItems.map((item, idx) =>
         idx === existingIndex
           ? {
               ...item,
@@ -87,11 +104,13 @@ export const useGuestCartStore = create<GuestCartState>((set, get) => ({
       const newItem: CartItem = {
         id: serviceId,
         serviceId,
+        categoryId: newCategoryId,
         quantity,
         unitPrice,
         lineTotal: unitPrice * quantity,
         service: {
           id: serviceId,
+          categoryId: newCategoryId,
           title: serviceData?.title || 'Service',
           description: serviceData?.description || 'Service description',
           price: serviceData?.price || unitPrice,
@@ -105,17 +124,22 @@ export const useGuestCartStore = create<GuestCartState>((set, get) => ({
           lineTotal: unitPrice * quantity,
         },
       };
-      updatedItems = [...items, newItem];
+      updatedItems = [...currentItems, newItem];
     }
 
+    // Synchronous 0ms state update for immediate UI responsiveness
     set({ items: updatedItems });
-    await Storage.setItem(GUEST_CART_STORAGE_KEY, JSON.stringify(updatedItems));
+
+    // Non-blocking async background storage persistence
+    Storage.setItem(GUEST_CART_STORAGE_KEY, JSON.stringify(updatedItems)).catch((err) => {
+      console.warn('[guestCartStore] Storage persist error:', err);
+    });
   },
 
   updateQuantity: async (itemId, quantity) => {
     const { items } = get();
     const updatedItems = items
-      .map(item =>
+      .map((item) =>
         item.id === itemId || item.serviceId === itemId
           ? {
               ...item,
@@ -128,23 +152,29 @@ export const useGuestCartStore = create<GuestCartState>((set, get) => ({
             }
           : item
       )
-      .filter(item => item.quantity > 0);
+      .filter((item) => item.quantity > 0);
 
     set({ items: updatedItems });
-    await Storage.setItem(GUEST_CART_STORAGE_KEY, JSON.stringify(updatedItems));
+    Storage.setItem(GUEST_CART_STORAGE_KEY, JSON.stringify(updatedItems)).catch((err) => {
+      console.warn('[guestCartStore] Storage persist error:', err);
+    });
   },
 
   removeItem: async (itemId) => {
     const { items } = get();
-    const updatedItems = items.filter(i => i.id !== itemId && i.serviceId !== itemId);
+    const updatedItems = items.filter((i) => i.id !== itemId && i.serviceId !== itemId);
 
     set({ items: updatedItems });
-    await Storage.setItem(GUEST_CART_STORAGE_KEY, JSON.stringify(updatedItems));
+    Storage.setItem(GUEST_CART_STORAGE_KEY, JSON.stringify(updatedItems)).catch((err) => {
+      console.warn('[guestCartStore] Storage persist error:', err);
+    });
   },
 
   clear: async () => {
     set({ items: [] });
-    await Storage.removeItem(GUEST_CART_STORAGE_KEY);
+    Storage.removeItem(GUEST_CART_STORAGE_KEY).catch((err) => {
+      console.warn('[guestCartStore] Storage clear error:', err);
+    });
   },
 
   getFormattedCart: () => {

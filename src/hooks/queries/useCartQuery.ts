@@ -48,7 +48,9 @@ export function useCartQuery() {
     };
   }, [guestItems]);
 
-  const queryKey = isAuthenticated ? ['cart', user.id] : ['cart', 'guest'];
+  const queryKey = useMemo(() => {
+    return isAuthenticated && user?.id ? ['cart', user.id] : ['cart', 'guest'];
+  }, [isAuthenticated, user?.id]);
 
   const query = useQuery<CartResponse, Error>({
     queryKey,
@@ -71,16 +73,40 @@ export function useCartQuery() {
     retry: 1,
   });
 
+  const guestResult = useMemo(() => ({
+    ...query,
+    data: guestCart,
+    isLoading: !isGuestHydrated,
+    isFetching: false,
+    isSuccess: true,
+    refetch: async () => ({ data: guestCart } as any),
+  }), [query, guestCart, isGuestHydrated]);
+
   if (!isAuthenticated) {
-    return {
-      ...query,
-      data: guestCart,
-      isLoading: !isGuestHydrated,
-      isFetching: false,
-      isSuccess: true,
-      refetch: async () => ({ data: guestCart } as any),
-    };
+    return guestResult;
   }
 
   return query;
+}
+
+/**
+ * Granular selector hook for cart item count.
+ * Prevents re-renders in Header components when total/pricing changes but item count is unchanged.
+ */
+export function useCartItemCount(): number {
+  const user = useAuthStore((s) => s.user);
+  const tokens = useAuthStore((s) => s.tokens);
+  const isAuthenticated = !!(user?.id && tokens?.accessToken);
+
+  const guestItemCount = useGuestCartStore((s) =>
+    s.items.reduce((sum, i) => sum + i.quantity, 0)
+  );
+
+  const { data: cart } = useCartQuery();
+
+  if (!isAuthenticated) {
+    return guestItemCount;
+  }
+
+  return cart?.itemCount ?? cart?.items?.reduce((sum, i) => sum + i.quantity, 0) ?? 0;
 }

@@ -239,7 +239,7 @@ export const OrderSummaryCard = memo(function OrderSummaryCard({
           <PriceRow label="Discount" value={summary.discount} isDiscount />
         )}
         <PriceRow label="Taxes (GST)" value={summary.tax} />
-        <PriceRow label="Platform Fee" value={summary.platformFee} />
+        <PriceRow label="Platform Fee" value={summary.platformFee ?? 0} />
       </View>
 
       <View style={styles.totalDivider} />

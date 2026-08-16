@@ -10,16 +10,14 @@ export function useCartMutations() {
   const tokens = useAuthStore((s) => s.tokens);
   const isAuthenticated = !!(user?.id && tokens?.accessToken);
 
-  const guestCartStore = useGuestCartStore();
-
-  const cartQueryKey = isAuthenticated ? ['cart', user.id] : ['cart', 'guest'];
+  const cartQueryKey = isAuthenticated && user?.id ? ['cart', user.id] : ['cart', 'guest'];
 
   // ADD ITEM MUTATION
   const addItemMutation = useMutation({
     mutationFn: async (payload: AddCartItemPayload & { serviceData?: CartServiceMetadata }) => {
       if (!isAuthenticated) {
-        await guestCartStore.addItem(payload.serviceId, payload.quantity ?? 1, payload.serviceData);
-        return guestCartStore.getFormattedCart();
+        await useGuestCartStore.getState().addItem(payload.serviceId, payload.quantity ?? 1, payload.serviceData);
+        return useGuestCartStore.getState().getFormattedCart();
       }
       const res = await cartService.addItem(payload);
       if (!res.ok || !res.data) throw res;
@@ -31,8 +29,24 @@ export function useCartMutations() {
       const previousCart = queryClient.getQueryData<CartResponse>(cartQueryKey);
 
       if (previousCart) {
-        const existingItems = previousCart.items || [];
-        const foundIdx = existingItems.findIndex(i => i.serviceId === payload.serviceId || i.id === payload.serviceId);
+        let existingItems = previousCart.items || [];
+        const targetCategoryId = payload.serviceData?.categoryId;
+
+        // Single-Category Cart Isolation:
+        // If adding item from a new category, atomically reset previous category items in optimistic state
+        if (targetCategoryId && existingItems.length > 0) {
+          const hasDifferentCategory = existingItems.some((i) => {
+            const itemCat = i.service?.categoryId || i.categoryId;
+            return !itemCat || itemCat !== targetCategoryId;
+          });
+          if (hasDifferentCategory) {
+            existingItems = [];
+          }
+        }
+
+        const foundIdx = existingItems.findIndex(
+          (i) => i.serviceId === payload.serviceId || i.id === payload.serviceId
+        );
         let newItems: CartItem[];
 
         const unitPrice = payload.serviceData?.discountPrice ?? payload.serviceData?.price ?? 499;
@@ -55,11 +69,13 @@ export function useCartMutations() {
           const newItem: CartItem = {
             id: payload.serviceId,
             serviceId: payload.serviceId,
+            categoryId: targetCategoryId,
             quantity: payload.quantity ?? 1,
             unitPrice,
             lineTotal: unitPrice * (payload.quantity ?? 1),
             service: {
               id: payload.serviceId,
+              categoryId: targetCategoryId,
               title: payload.serviceData?.title || 'Service',
               description: payload.serviceData?.description || 'Service',
               price: payload.serviceData?.price || unitPrice,
@@ -104,17 +120,28 @@ export function useCartMutations() {
     },
     onSuccess: (serverCart) => {
       if (isAuthenticated && serverCart) {
-        queryClient.setQueryData(cartQueryKey, (old: any) => { if (!old || serverCart.version >= old.version) return serverCart; return old; });
+        queryClient.setQueryData(cartQueryKey, (old: any) => {
+          if (!old || serverCart.version >= old.version) return serverCart;
+          return old;
+        });
       }
     },
   });
 
   // UPDATE QUANTITY MUTATION
   const updateQuantityMutation = useMutation({
-    mutationFn: async ({ itemId, quantity, expectedVersion }: { itemId: string; quantity: number; expectedVersion?: number }) => {
+    mutationFn: async ({
+      itemId,
+      quantity,
+      expectedVersion,
+    }: {
+      itemId: string;
+      quantity: number;
+      expectedVersion?: number;
+    }) => {
       if (!isAuthenticated) {
-        await guestCartStore.updateQuantity(itemId, quantity);
-        return guestCartStore.getFormattedCart();
+        await useGuestCartStore.getState().updateQuantity(itemId, quantity);
+        return useGuestCartStore.getState().getFormattedCart();
       }
       const res = await cartService.updateQuantity(itemId, { quantity, expectedVersion });
       if (!res.ok || !res.data) throw res;
@@ -127,7 +154,7 @@ export function useCartMutations() {
 
       if (previousCart) {
         const newItems = previousCart.items
-          .map(item =>
+          .map((item) =>
             item.id === itemId || item.serviceId === itemId
               ? {
                   ...item,
@@ -140,7 +167,7 @@ export function useCartMutations() {
                 }
               : item
           )
-          .filter(item => item.quantity > 0);
+          .filter((item) => item.quantity > 0);
 
         const subtotal = newItems.reduce((sum, i) => sum + i.pricing.lineTotal, 0);
         const tax = Math.round(subtotal * 0.18);
@@ -170,7 +197,10 @@ export function useCartMutations() {
     },
     onSuccess: (serverCart) => {
       if (isAuthenticated && serverCart) {
-        queryClient.setQueryData(cartQueryKey, (old: any) => { if (!old || serverCart.version >= old.version) return serverCart; return old; });
+        queryClient.setQueryData(cartQueryKey, (old: any) => {
+          if (!old || serverCart.version >= old.version) return serverCart;
+          return old;
+        });
       }
     },
   });
@@ -179,8 +209,8 @@ export function useCartMutations() {
   const removeItemMutation = useMutation({
     mutationFn: async ({ itemId }: { itemId: string; expectedVersion?: number }) => {
       if (!isAuthenticated) {
-        await guestCartStore.removeItem(itemId);
-        return guestCartStore.getFormattedCart();
+        await useGuestCartStore.getState().removeItem(itemId);
+        return useGuestCartStore.getState().getFormattedCart();
       }
       const res = await cartService.removeItem(itemId);
       if (!res.ok || !res.data) throw res;
@@ -192,7 +222,9 @@ export function useCartMutations() {
       const previousCart = queryClient.getQueryData<CartResponse>(cartQueryKey);
 
       if (previousCart) {
-        const newItems = previousCart.items.filter(i => i.id !== itemId && i.serviceId !== itemId);
+        const newItems = previousCart.items.filter(
+          (i) => i.id !== itemId && i.serviceId !== itemId
+        );
         const subtotal = newItems.reduce((sum, i) => sum + i.pricing.lineTotal, 0);
         const tax = Math.round(subtotal * 0.18);
         const platformFee = 0;
@@ -221,7 +253,10 @@ export function useCartMutations() {
     },
     onSuccess: (serverCart) => {
       if (isAuthenticated && serverCart) {
-        queryClient.setQueryData(cartQueryKey, (old: any) => { if (!old || serverCart.version >= old.version) return serverCart; return old; });
+        queryClient.setQueryData(cartQueryKey, (old: any) => {
+          if (!old || serverCart.version >= old.version) return serverCart;
+          return old;
+        });
       }
     },
   });
@@ -230,8 +265,8 @@ export function useCartMutations() {
   const clearCartMutation = useMutation({
     mutationFn: async () => {
       if (!isAuthenticated) {
-        await guestCartStore.clear();
-        return guestCartStore.getFormattedCart();
+        await useGuestCartStore.getState().clear();
+        return useGuestCartStore.getState().getFormattedCart();
       }
       const res = await cartService.clearCart();
       if (!res.ok || !res.data) throw res;
@@ -239,7 +274,10 @@ export function useCartMutations() {
     },
     onSuccess: (serverCart) => {
       if (isAuthenticated && serverCart) {
-        queryClient.setQueryData(cartQueryKey, (old: any) => { if (!old || serverCart.version >= old.version) return serverCart; return old; });
+        queryClient.setQueryData(cartQueryKey, (old: any) => {
+          if (!old || serverCart.version >= old.version) return serverCart;
+          return old;
+        });
       }
     },
   });
@@ -248,7 +286,7 @@ export function useCartMutations() {
   const mergeGuestCartMutation = useMutation({
     mutationFn: async () => {
       if (!isAuthenticated) return null;
-      const guestItems = guestCartStore.items;
+      const guestItems = useGuestCartStore.getState().items;
       if (guestItems.length === 0) return null;
 
       const payload: MergeCartPayload = {
@@ -261,14 +299,17 @@ export function useCartMutations() {
 
       const res = await cartService.mergeCart(payload);
       if (res.ok && res.data) {
-        await guestCartStore.clear();
+        await useGuestCartStore.getState().clear();
         return res.data;
       }
       return null;
     },
     onSuccess: (serverCart) => {
       if (serverCart && isAuthenticated) {
-        queryClient.setQueryData(cartQueryKey, (old: any) => { if (!old || serverCart.version >= old.version) return serverCart; return old; });
+        queryClient.setQueryData(cartQueryKey, (old: any) => {
+          if (!old || serverCart.version >= old.version) return serverCart;
+          return old;
+        });
       }
     },
   });

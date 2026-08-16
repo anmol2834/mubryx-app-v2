@@ -1,5 +1,6 @@
 export interface CartServiceMetadata {
   id: string;
+  categoryId?: string;
   title: string;
   description: string;
   price?: number;
@@ -18,6 +19,7 @@ export interface CartItem {
   id: string;
   cartId?: string;
   serviceId: string;
+  categoryId?: string;
   quantity: number;
   unitPrice: number;
   lineTotal: number;

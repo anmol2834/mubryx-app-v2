@@ -13,12 +13,20 @@ function mapApiBookingToActiveBooking(b: any): ActiveBooking {
     b.serviceName ||
     'Service';
 
-  const currentStage: TrackStageId =
-    b.status === 'COMPLETED' || b.status === 'SERVICE_COMPLETED'
-      ? 'completed'
-      : b.status === 'SERVICE_STARTED'
-      ? 'started'
-      : 'confirmed';
+  let currentStage: TrackStageId = 'confirmed';
+  if (b.status === 'COMPLETED' || b.status === 'SERVICE_COMPLETED') {
+    currentStage = 'completed';
+  } else if (b.status === 'SERVICE_STARTED' || b.status === 'IN_PROGRESS') {
+    currentStage = 'started';
+  } else if (b.status === 'TECHNICIAN_ARRIVED' || b.status === 'ARRIVED') {
+    currentStage = 'arrived';
+  } else if (b.status === 'NEARBY') {
+    currentStage = 'nearby';
+  } else if (b.status === 'TECHNICIAN_ON_THE_WAY' || b.status === 'EN_ROUTE') {
+    currentStage = 'journey';
+  } else if (b.status === 'TECHNICIAN_ASSIGNED' || b.status === 'TECHNICIAN_ACCEPTED' || b.technician) {
+    currentStage = 'assigned';
+  }
 
   const extractedPrice =
     b.pricing?.total ??
@@ -32,6 +40,15 @@ function mapApiBookingToActiveBooking(b: any): ActiveBooking {
         )
       : firstItem.lineTotal ?? firstItem.unitPrice ?? 0);
 
+  const techObj = b.technician || b.assignedTechnician;
+  const techName = techObj?.fullName || techObj?.name || (techObj?.user ? techObj.user.name : null);
+
+  const isAssigned = ['assigned', 'journey', 'nearby', 'arrived', 'started', 'completed'].includes(currentStage);
+  const isJourney = ['journey', 'nearby', 'arrived', 'started', 'completed'].includes(currentStage);
+  const isArrived = ['arrived', 'started', 'completed'].includes(currentStage);
+  const isStarted = ['started', 'completed'].includes(currentStage);
+  const isCompleted = currentStage === 'completed';
+
   return {
     id: b.bookingId || b.id || b._id,
     bookingId: b.bookingId || b.id || b._id,
@@ -39,7 +56,7 @@ function mapApiBookingToActiveBooking(b: any): ActiveBooking {
     serviceIcon: '🔧',
     applianceName: firstItem.category || b.category || serviceTitle,
     currentStage,
-    eta: b.eta || '30 mins',
+    eta: b.eta || (currentStage === 'journey' ? '15 mins' : currentStage === 'arrived' ? 'Arrived' : '30 mins'),
     scheduledDate: b.scheduledAt
       ? new Date(b.scheduledAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })
       : b.scheduledDate || 'Today',
@@ -50,15 +67,15 @@ function mapApiBookingToActiveBooking(b: any): ActiveBooking {
     paymentMethod: b.paymentMethod || 'Online',
     warranty: b.warranty || '30 Days Warranty',
     estimatedDuration: firstItem.duration || b.estimatedDuration || '45 mins',
-    engineer: b.technician ? {
-      id: b.technician._id || b.technician.id || 'tech1',
-      name: b.technician.name || 'Technician Assigned',
-      avatarInitials: (b.technician.name || 'Tech').slice(0, 2).toUpperCase(),
+    engineer: techName ? {
+      id: techObj.id || techObj._id || 'tech1',
+      name: techName,
+      avatarInitials: techName.slice(0, 2).toUpperCase(),
       avatarColor: '#1565C0',
-      rating: String(b.technician.rating || 4.9),
-      experience: b.technician.experience || '5+ Yrs',
+      rating: String(techObj.rating || 4.9),
+      experience: techObj.experience || '5+ Yrs',
       isVerified: true,
-      phone: b.technician.phone || '',
+      phone: techObj.phone || (techObj.user ? techObj.user.phone : '') || '',
     } : null,
     address: b.serviceAddress?.completeAddress || b.address?.completeAddress || b.address?.address || 'Service Location',
     landmark: b.serviceAddress?.landmark || b.address?.landmark || '',
@@ -68,12 +85,12 @@ function mapApiBookingToActiveBooking(b: any): ActiveBooking {
     happyCode: b.happyCode || null,
     stages: [
       { id: 'confirmed', title: 'Booking Confirmed', description: 'Service confirmed', timestamp: b.createdAt || '', status: 'done' },
-      { id: 'assigned', title: 'Technician Assigned', description: b.technician?.name ? `${b.technician.name} assigned` : 'Assigning technician', timestamp: null, status: b.technician ? 'done' : 'pending' },
-      { id: 'journey', title: 'On the Way', description: 'Technician heading to location', timestamp: null, status: 'pending' },
-      { id: 'nearby', title: 'Nearby', description: 'Technician near location', timestamp: null, status: 'pending' },
-      { id: 'arrived', title: 'Arrived', description: 'Technician at location', timestamp: null, status: 'pending' },
-      { id: 'started', title: 'Service Started', description: 'Work in progress', timestamp: null, status: b.status === 'IN_PROGRESS' || b.status === 'SERVICE_STARTED' ? 'active' : 'pending' },
-      { id: 'completed', title: 'Service Completed', description: 'Service done', timestamp: null, status: b.status === 'COMPLETED' || b.status === 'SERVICE_COMPLETED' ? 'done' : 'pending' },
+      { id: 'assigned', title: 'Technician Assigned', description: techName ? `${techName} assigned` : 'Assigning technician', timestamp: null, status: isAssigned ? 'done' : 'pending' },
+      { id: 'journey', title: 'On the Way', description: 'Technician heading to location', timestamp: null, status: isJourney ? (currentStage === 'journey' ? 'active' : 'done') : 'pending' },
+      { id: 'nearby', title: 'Nearby', description: 'Technician near location', timestamp: null, status: isArrived ? 'done' : currentStage === 'nearby' ? 'active' : 'pending' },
+      { id: 'arrived', title: 'Arrived', description: 'Technician at location', timestamp: null, status: isArrived ? (currentStage === 'arrived' ? 'active' : 'done') : 'pending' },
+      { id: 'started', title: 'Service Started', description: 'Work in progress', timestamp: null, status: isStarted ? (currentStage === 'started' ? 'active' : 'done') : 'pending' },
+      { id: 'completed', title: 'Service Completed', description: 'Service done', timestamp: null, status: isCompleted ? 'done' : 'pending' },
     ],
   };
 }
