@@ -226,6 +226,14 @@ export function useBookingFlow(): UseBookingFlowReturn {
         if (cancelledRef.current) return;
         backendResult = result;
         backendDone = true;
+
+        // Clear cart display in React Query cache (backend already converted the cart)
+        const cartQueryKey = user?.id ? ['cart', user.id] : ['cart', 'guest'];
+        const bookingsQueryKey = user?.id ? ['bookings', user.id] : ['bookings'];
+        queryClient.setQueryData(cartQueryKey, null);
+        queryClient.removeQueries({ queryKey: cartQueryKey });
+        queryClient.invalidateQueries({ queryKey: bookingsQueryKey });
+
         checkAndTransition();
       })
       .catch((err: any) => {
