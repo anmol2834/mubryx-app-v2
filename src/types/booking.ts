@@ -48,7 +48,6 @@ export interface BookingPricing {
   subtotal: number;
   discount: number;
   tax: number;
-  platformFee: number;
   total: number;
 }
 

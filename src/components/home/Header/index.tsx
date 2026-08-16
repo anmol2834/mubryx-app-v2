@@ -1,5 +1,5 @@
 import { Brand, Radius, Shadow, Spacing, Typography } from '@/constants/brand';
-import { useCartQuery } from '@/hooks/queries/useCartQuery';
+import { useCartItemCount } from '@/hooks/queries/useCartQuery';
 import { useNotificationsQuery } from '@/hooks/queries/useNotificationsQuery';
 import { useLocation } from '@/context/LocationContext';
 import { useRouter } from 'expo-router';
@@ -73,8 +73,7 @@ function CartIcon() {
 export const HomeHeader = memo(function HomeHeader({ onNotifPress }: { onNotifPress?: () => void }) {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { data: cart } = useCartQuery();
-  const itemCount = cart?.items?.reduce((sum, item) => sum + item.quantity, 0) || 0;
+  const itemCount = useCartItemCount();
   const { data: notifications } = useNotificationsQuery();
   const unreadCount = notifications ? notifications.filter((n) => !n.isRead).length : 0;
   const { address, openLocationSelector } = useLocation();

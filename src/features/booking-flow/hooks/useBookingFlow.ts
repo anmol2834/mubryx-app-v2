@@ -151,30 +151,35 @@ export function useBookingFlow(): UseBookingFlowReturn {
 
       timersRef.current.push(activateTimer, completeTimer);
     });
-
-    // We do NOT time out automatically on the frontend anymore;
-    // backend will orchestrate timeout / reassignment.
   }, []);
 
-  // Socket Listener for Booking Assignment
+  // ─── Socket Listener for Booking Assignment & Room Subscription ───────────
   useEffect(() => {
+    if (!bookingResult?.bookingId) return;
+
+    socketManager.joinBooking(bookingResult.bookingId);
     const socket = socketManager.connect();
     if (!socket) return;
 
-    const onAssigned = (data: any) => {
-      // Check if the assigned booking matches the current one we are searching for
-      if (bookingResult?.bookingId === data?.bookingId) {
-        // We received real-time confirmation that technician accepted!
-        // Update local result and transition to success sheet
-        setBookingResult(prev => prev ? { ...prev, ...data } : data);
+    const onAssigned = (envelope: any) => {
+      const payload = envelope?.data || envelope;
+      const assignedBookingId = payload?.bookingId || payload?.id;
+      if (bookingResult?.bookingId && bookingResult.bookingId === assignedBookingId) {
+        console.log('[useBookingFlow] Real-time assignment received:', assignedBookingId);
+        setBookingResult((prev) => (prev ? { ...prev, ...payload } : payload));
         setActiveSheet('assigned');
       }
     };
 
     socket.on('booking:assigned', onAssigned);
+    socket.on('booking:status_changed', onAssigned);
 
     return () => {
       socket.off('booking:assigned', onAssigned);
+      socket.off('booking:status_changed', onAssigned);
+      if (bookingResult?.bookingId) {
+        socketManager.leaveBooking(bookingResult.bookingId);
+      }
     };
   }, [bookingResult?.bookingId]);
 
@@ -188,90 +193,82 @@ export function useBookingFlow(): UseBookingFlowReturn {
 
     setActiveSheet('finding');
 
-    // Fire the booking API call in parallel with the animation
-    let apiResult: BookingResult | null = null;
-    let apiDone = false;
-    let animDone = false;
+    let backendResult: BookingResult | null = null;
+    let backendDone = false;
+    let animationDone = false;
 
-    const tryTransition = () => {
-      if (apiDone && !cancelledRef.current) {
-        if (apiResult) {
-          // Stop any running animations
-          clearTimers();
-          // Set the result and transition immediately to success sheet
-          setBookingResult(apiResult);
+    const checkAndTransition = () => {
+      if (cancelledRef.current) return;
+      if (backendDone && animationDone) {
+        if (backendResult) {
+          setBookingResult(backendResult);
           setActiveSheet('assigned');
-        } else {
-          setHasError(true);
-          setErrorMessage('Could not assign a technician. Please try again.');
         }
       }
     };
 
-    // API call
-    createBooking(payload)
-      .then(result => {
-        apiResult = result;
-        apiDone = true;
-        // Invalidate cart and bookings queries on success
-        const cartKey = user?.id ? ['cart', user.id] : ['cart', 'guest'];
-        const bookingsKey = user?.id ? ['bookings', user.id] : ['bookings'];
-        queryClient.setQueryData(cartKey, null);
-        queryClient.removeQueries({ queryKey: cartKey });
-        queryClient.invalidateQueries({ queryKey: bookingsKey });
-        tryTransition();
-      })
-      .catch((err) => {
-        if (!cancelledRef.current) {
-          // Provide user-friendly error based on error code
-          const errorCode = (err as any)?.errorCode || 'BOOKING_CREATION_FAILED';
-          const userMessage = getBookingErrorMessage(errorCode, err?.message);
-          setHasError(true);
-          setErrorMessage(userMessage);
-          setActiveSheet('none');
-        }
-      });
-
-    // Animation sequence
+    // 1. Kick off UI animation sequence
     runMatchingSequence(
-      () => { animDone = true; tryTransition(); },
-      (msg) => {
+      () => {
+        animationDone = true;
+        checkAndTransition();
+      },
+      (errorMsg) => {
         setHasError(true);
-        setErrorMessage(msg);
+        setErrorMessage(errorMsg);
+        setActiveSheet('none');
       },
     );
+
+    // 2. Call backend API concurrently
+    createBooking(payload)
+      .then((result) => {
+        if (cancelledRef.current) return;
+        backendResult = result;
+        backendDone = true;
+        checkAndTransition();
+      })
+      .catch((err: any) => {
+        if (cancelledRef.current) return;
+        clearTimers();
+        const errorCode = err?.errorCode || err?.code || 'BOOKING_CREATION_FAILED';
+        const mappedMsg = getBookingErrorMessage(
+          errorCode,
+          err?.message ?? 'Failed to create booking',
+        );
+        setHasError(true);
+        setErrorMessage(mappedMsg);
+        setActiveSheet('none');
+      });
   }, [clearTimers, resetState, runMatchingSequence]);
 
   // ─── Cancel flow ─────────────────────────────────────────────────────────
 
-  const cancelFlow = useCallback(() => {
+  const cancelFlow = useCallback(async () => {
     cancelledRef.current = true;
     clearTimers();
     setIsCancelling(true);
 
-    const bookingId = bookingResult?.bookingId;
-    if (bookingId) {
-      cancelBooking(bookingId).finally(() => {
-        setIsCancelling(false);
-        setActiveSheet('none');
-        resetState();
-      });
-    } else {
-      setIsCancelling(false);
-      setActiveSheet('none');
-      resetState();
+    if (bookingResult?.bookingId) {
+      try {
+        await cancelBooking(bookingResult.bookingId);
+      } catch {
+        // Continue cleanup even if server cancel fails
+      }
     }
-  }, [clearTimers, resetState, bookingResult]);
 
-  // ─── Close assigned sheet ─────────────────────────────────────────────────
+    resetState();
+    setActiveSheet('none');
+  }, [clearTimers, bookingResult?.bookingId, resetState]);
+
+  // ─── Close assigned sheet ────────────────────────────────────────────────
 
   const closeAssignedSheet = useCallback(() => {
     setActiveSheet('none');
     resetState();
-    setBookingResult(null);
   }, [resetState]);
 
-  // ─── Retry ────────────────────────────────────────────────────────────────
+  // ─── Retry flow ──────────────────────────────────────────────────────────
 
   const retryFlow = useCallback(() => {
     if (payloadRef.current) {

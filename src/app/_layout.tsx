@@ -51,6 +51,8 @@ function AuthenticatedLocationModal() {
   return <LocationSearchModal />;
 }
 
+import { CustomerNotificationProvider } from '@/components/notifications/CustomerNotificationProvider';
+
 export default function RootLayout() {
   const hydrateSession = useAuthStore(s => s.hydrateSession);
   
@@ -64,8 +66,9 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <QueryClientProvider client={queryClient}>
-        <BottomSheetModalProvider>
-          <GluestackUIProvider mode="light">
+        <CustomerNotificationProvider>
+          <BottomSheetModalProvider>
+            <GluestackUIProvider mode="light">
               <LocationProvider>
                 <GlobalBackHandler />
                 <AnimatedSplashOverlay />
@@ -76,8 +79,9 @@ export default function RootLayout() {
                 </Stack>
                 <AuthenticatedLocationModal />
               </LocationProvider>
-          </GluestackUIProvider>
-        </BottomSheetModalProvider>
+            </GluestackUIProvider>
+          </BottomSheetModalProvider>
+        </CustomerNotificationProvider>
       </QueryClientProvider>
     </GestureHandlerRootView>
   );

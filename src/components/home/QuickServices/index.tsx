@@ -2,7 +2,7 @@ import { Brand, Radius, Shadow, Spacing, Typography } from '@/constants/brand';
 import { useCategoriesQuery } from '@/hooks/queries/useCategoriesQuery';
 import { useRouter } from 'expo-router';
 import { memo, useCallback, useMemo } from 'react';
-import { Dimensions, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Dimensions, Pressable, StyleSheet, Text, View } from 'react-native';
 import Svg, { Circle, Path, Polyline, Rect, SvgXml } from 'react-native-svg';
 import { QuickServicesSkeleton } from '../Skeletons/HomeServiceSkeleton';
 
@@ -94,18 +94,11 @@ export const QuickServices = memo(function QuickServices() {
           </Pressable>
         </View>
       </View>
-      <FlatList
-        key="services-3col"
-        data={displayServices}
-        keyExtractor={(item) => item.id}
-        renderItem={renderItem}
-        numColumns={3}
-        scrollEnabled={false}
-        columnWrapperStyle={styles.row}
-        contentContainerStyle={styles.grid}
-        ItemSeparatorComponent={() => <View style={{ height: Spacing.md }} />}
-        removeClippedSubviews={false}
-      />
+      <View style={styles.grid}>
+        {displayServices.map((item) => (
+          <ServiceCard key={item.id} item={item} onPress={handleCardPress} />
+        ))}
+      </View>
     </View>
   );
 });
@@ -144,10 +137,10 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   grid: {
-    paddingBottom: Spacing.md,
-  },
-  row: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: Spacing.md,
+    paddingBottom: Spacing.md,
   },
   cardWrap: {
     width: CARD_W,

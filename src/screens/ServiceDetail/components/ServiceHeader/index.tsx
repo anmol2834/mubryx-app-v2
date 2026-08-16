@@ -1,5 +1,5 @@
 import { Brand, Radius, Spacing, Typography } from '@/constants/brand';
-import { useCartQuery } from '@/hooks/queries/useCartQuery';
+import { useCartItemCount } from '@/hooks/queries/useCartQuery';
 import { useRouter } from 'expo-router';
 import { memo, useCallback } from 'react';
 import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
@@ -51,10 +51,8 @@ export const ServiceHeader = memo(function ServiceHeader({
 }: ServiceHeaderProps) {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { data: cart } = useCartQuery();
-  const itemCount = cart?.items?.reduce((sum, item) => sum + item.quantity, 0) || 0;
+  const itemCount = useCartItemCount();
 
-  // Direct push — no delay, no InteractionManager
   const handleCartPress = useCallback(() => {
     router.push('/cart');
   }, [router]);

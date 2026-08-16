@@ -99,6 +99,9 @@ export const LiveTrackingList = memo(function LiveTrackingList({
         contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}
         showsVerticalScrollIndicator={false}
         removeClippedSubviews={false}
+        initialNumToRender={4}
+        maxToRenderPerBatch={4}
+        windowSize={5}
         refreshControl={
           onRefresh ? (
             <RefreshControl
