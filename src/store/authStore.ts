@@ -5,6 +5,7 @@ import { setTokenRefreshHandler } from '@/services/apiClient';
 import { useGuestCartStore } from '@/store/guestCartStore';
 import { cartService } from '@/services/cartService';
 import { queryClient } from '@/api/queryClient';
+import { customerNotificationService } from '@/services/notifications/customerNotificationService';
 
 const AUTH_USER_KEY = 'mubryx_auth_user';
 const ACCESS_TOKEN_KEY = 'mubryx_access_token';
@@ -140,6 +141,11 @@ export const useAuthStore = create<AuthState>((set, get) => {
       
       set({ tokens: tokenData, user: authUser });
 
+      // Initialize FCM device registration asynchronously upon login
+      customerNotificationService.initialize(bUser.id).catch((err) => {
+        console.warn('[authStore] FCM registration error on saveSession:', err);
+      });
+
       // Merge local guest cart into backend database cart on login
       try {
         const guestItems = useGuestCartStore.getState().items;
@@ -162,6 +168,14 @@ export const useAuthStore = create<AuthState>((set, get) => {
     logout: async () => {
       isLoggingOut = true;
       const { tokens, user } = get();
+
+      // Deactivate FCM token on logout
+      try {
+        await customerNotificationService.deactivateDeviceToken();
+      } catch {
+        /* ignore */
+      }
+
       if (tokens?.accessToken) {
         try { await authService.logout(tokens.accessToken); } catch { /* ignore */ }
       }

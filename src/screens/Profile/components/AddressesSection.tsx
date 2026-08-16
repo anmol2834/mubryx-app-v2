@@ -1,6 +1,6 @@
 import { Brand, Radius, Shadow, Spacing, Typography } from '@/constants/brand';
 import { memo } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { type SavedAddress } from '../constants';
 
 const LABEL_ICONS: Record<SavedAddress['label'], string> = {
@@ -12,9 +12,10 @@ const LABEL_ICONS: Record<SavedAddress['label'], string> = {
 interface Props {
   addresses: SavedAddress[];
   onEdit: (id: string) => void;
+  isSaving?: boolean;
 }
 
-export const AddressesSection = memo(function AddressesSection({ addresses, onEdit }: Props) {
+export const AddressesSection = memo(function AddressesSection({ addresses, onEdit, isSaving }: Props) {
   const homeAddr = addresses.find((a) => a.label.toLowerCase() === 'home');
   const officeAddr = addresses.find((a) => a.label.toLowerCase() === 'office');
   const otherAddr = addresses.find((a) => a.label.toLowerCase() === 'other');
@@ -31,7 +32,7 @@ export const AddressesSection = memo(function AddressesSection({ addresses, onEd
           <Pressable
             key={homeAddr.id}
             style={({ pressed }) => [styles.card, pressed && { opacity: 0.7 }]}
-            onPress={() => onEdit(homeAddr.id)}
+            onPress={() => !isSaving && onEdit(homeAddr.id)}
           >
             <View style={styles.cardLeft}>
               <Text style={styles.labelIcon}>🏠</Text>
@@ -49,18 +50,28 @@ export const AddressesSection = memo(function AddressesSection({ addresses, onEd
                 </Text>
               </View>
             </View>
+            {isSaving && (
+              <View style={styles.cardLoadingOverlay}>
+                <ActivityIndicator size="small" color={Brand.primary} />
+                <Text style={styles.loadingText}>Updating address...</Text>
+              </View>
+            )}
           </Pressable>
         ) : (
           <Pressable
             style={({ pressed }) => [styles.placeholderCard, pressed && { opacity: 0.7 }]}
-            onPress={() => onEdit('new_Home')}
+            onPress={() => !isSaving && onEdit('new_Home')}
           >
             <Text style={styles.labelIcon}>🏠</Text>
             <View style={styles.cardTexts}>
               <Text style={styles.placeholderTitle}>Home Address</Text>
               <Text style={styles.placeholderSub}>Tap to add your Home service address</Text>
             </View>
-            <Text style={styles.addPlusText}>+</Text>
+            {isSaving ? (
+              <ActivityIndicator size="small" color={Brand.primary} />
+            ) : (
+              <Text style={styles.addPlusText}>+</Text>
+            )}
           </Pressable>
         )}
 
@@ -69,7 +80,7 @@ export const AddressesSection = memo(function AddressesSection({ addresses, onEd
           <Pressable
             key={officeAddr.id}
             style={({ pressed }) => [styles.card, pressed && { opacity: 0.7 }]}
-            onPress={() => onEdit(officeAddr.id)}
+            onPress={() => !isSaving && onEdit(officeAddr.id)}
           >
             <View style={styles.cardLeft}>
               <Text style={styles.labelIcon}>🏢</Text>
@@ -87,18 +98,28 @@ export const AddressesSection = memo(function AddressesSection({ addresses, onEd
                 </Text>
               </View>
             </View>
+            {isSaving && (
+              <View style={styles.cardLoadingOverlay}>
+                <ActivityIndicator size="small" color={Brand.primary} />
+                <Text style={styles.loadingText}>Updating address...</Text>
+              </View>
+            )}
           </Pressable>
         ) : (
           <Pressable
             style={({ pressed }) => [styles.placeholderCard, pressed && { opacity: 0.7 }]}
-            onPress={() => onEdit('new_Office')}
+            onPress={() => !isSaving && onEdit('new_Office')}
           >
             <Text style={styles.labelIcon}>🏢</Text>
             <View style={styles.cardTexts}>
               <Text style={styles.placeholderTitle}>Office Address</Text>
               <Text style={styles.placeholderSub}>Tap to add your Office service address</Text>
             </View>
-            <Text style={styles.addPlusText}>+</Text>
+            {isSaving ? (
+              <ActivityIndicator size="small" color={Brand.primary} />
+            ) : (
+              <Text style={styles.addPlusText}>+</Text>
+            )}
           </Pressable>
         )}
 
@@ -107,7 +128,7 @@ export const AddressesSection = memo(function AddressesSection({ addresses, onEd
           <Pressable
             key={otherAddr.id}
             style={({ pressed }) => [styles.card, pressed && { opacity: 0.7 }]}
-            onPress={() => onEdit(otherAddr.id)}
+            onPress={() => !isSaving && onEdit(otherAddr.id)}
           >
             <View style={styles.cardLeft}>
               <Text style={styles.labelIcon}>📍</Text>
@@ -125,14 +146,29 @@ export const AddressesSection = memo(function AddressesSection({ addresses, onEd
                 </Text>
               </View>
             </View>
+            {isSaving && (
+              <View style={styles.cardLoadingOverlay}>
+                <ActivityIndicator size="small" color={Brand.primary} />
+                <Text style={styles.loadingText}>Updating address...</Text>
+              </View>
+            )}
           </Pressable>
         ) : (
           <Pressable
             style={({ pressed }) => [styles.addOtherCard, pressed && { opacity: 0.7 }]}
-            onPress={() => onEdit('new_Other')}
+            onPress={() => !isSaving && onEdit('new_Other')}
           >
-            <Text style={styles.labelIcon}>📍</Text>
-            <Text style={styles.addOtherText}>+ Add Other Location</Text>
+            {isSaving ? (
+              <View style={styles.inlineLoadingRow}>
+                <ActivityIndicator size="small" color={Brand.primary} />
+                <Text style={styles.addOtherText}>Saving Location...</Text>
+              </View>
+            ) : (
+              <>
+                <Text style={styles.labelIcon}>📍</Text>
+                <Text style={styles.addOtherText}>+ Add Other Location</Text>
+              </>
+            )}
           </Pressable>
         )}
       </View>
@@ -287,5 +323,25 @@ const styles = StyleSheet.create({
     ...Typography.bodyMedium,
     color: Brand.primary,
     fontWeight: '700',
+  },
+  cardLoadingOverlay: {
+    ...StyleSheet.absoluteFill,
+    backgroundColor: 'rgba(255, 255, 255, 0.85)',
+    borderRadius: Radius.lg,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.sm,
+    zIndex: 10,
+  },
+  loadingText: {
+    ...Typography.smallMedium,
+    color: Brand.primary,
+    fontWeight: '600',
+  },
+  inlineLoadingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
   },
 });

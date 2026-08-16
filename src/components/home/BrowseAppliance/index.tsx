@@ -47,9 +47,21 @@ const ApplianceCard = memo(function ApplianceCard({
   );
 });
 
+import { useEffect, useState } from 'react';
+
 export const BrowseAppliance = memo(function BrowseAppliance() {
   const router = useRouter();
-  const { data: apiCategories = [], isLoading } = useCategoriesQuery();
+  const { data: apiCategories = [], isLoading: isQueryLoading } = useCategoriesQuery();
+  const [isTimerLoading, setIsTimerLoading] = useState(true);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsTimerLoading(false);
+    }, 2200);
+    return () => clearTimeout(timer);
+  }, []);
+
+  const isLoading = isQueryLoading || isTimerLoading;
 
   const appliancesList = useMemo(() => {
     if (!apiCategories || apiCategories.length === 0) {

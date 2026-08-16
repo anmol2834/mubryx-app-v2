@@ -36,7 +36,7 @@ export const TrackScreen = memo(function TrackScreen({
   // service call when navigating from list → detail.
   const prefetchedBooking = useMemo<ActiveBooking | null>(() => {
     if (view.kind !== 'detail') return null;
-    return bookings.find((b) => b.bookingId === view.bookingId) ?? null;
+    return bookings.find((b) => b.id === view.bookingId) ?? null;
   }, [view, bookings]);
 
   // Back handler for detail view:

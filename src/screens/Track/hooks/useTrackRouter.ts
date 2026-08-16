@@ -45,7 +45,7 @@ export function useTrackRouter(isActive: boolean): UseTrackRouterReturn {
         setView({ kind: 'empty' });
         cameFromList.current = false;
       } else if (active.length === 1) {
-        setView({ kind: 'detail', bookingId: active[0].bookingId });
+        setView({ kind: 'detail', bookingId: active[0].id });
         cameFromList.current = false;
       } else {
         setView({ kind: 'list' });
@@ -63,7 +63,7 @@ export function useTrackRouter(isActive: boolean): UseTrackRouterReturn {
       const active = await getActiveBookings(CURRENT_USER_ID);
       setBookings(active);
       if (active.length === 0) setView({ kind: 'empty' });
-      else if (active.length === 1) setView({ kind: 'detail', bookingId: active[0].bookingId });
+      else if (active.length === 1) setView({ kind: 'detail', bookingId: active[0].id });
       else setView({ kind: 'list' });
     } catch {
       // Keep state
@@ -78,14 +78,6 @@ export function useTrackRouter(isActive: boolean): UseTrackRouterReturn {
     hasLoaded.current = true;
     load();
   }, [isActive, load]);
-
-  // Re-fetch when tab is re-activated after being hidden (e.g. user completes
-  // a booking and returns to track tab) — reset the hasLoaded guard
-  useEffect(() => {
-    if (!isActive) {
-      hasLoaded.current = false;
-    }
-  }, [isActive]);
 
   const openDetail = useCallback((bookingId: string) => {
     setView({ kind: 'detail', bookingId });

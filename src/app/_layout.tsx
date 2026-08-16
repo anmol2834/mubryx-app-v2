@@ -6,15 +6,44 @@ import { LocationProvider } from '@/context/LocationContext';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { queryClient } from '@/api/queryClient';
 import '@/global.css';
-import { Redirect, Stack } from 'expo-router';
+import { Redirect, Stack, usePathname, useRouter } from 'expo-router';
 import { useEffect } from 'react';
 import * as SplashScreen from 'expo-splash-screen';
-import { View } from 'react-native';
+import { BackHandler, LogBox, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 
+LogBox.ignoreLogs([
+  'Cannot connect to Expo CLI',
+  "Can't perform a React state update on a component that hasn't mounted yet",
+  "React state update on a component that hasn't mounted yet",
+]);
+
 SplashScreen.preventAutoHideAsync();
+
+function GlobalBackHandler() {
+  const router = useRouter();
+  const pathname = usePathname();
+
+  useEffect(() => {
+    if (pathname === '/' || pathname === '/login' || pathname === '/otp') return;
+
+    const onBackPress = () => {
+      if (router.canGoBack()) {
+        router.back();
+      } else {
+        router.replace('/');
+      }
+      return true;
+    };
+
+    const sub = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+    return () => sub.remove();
+  }, [pathname, router]);
+
+  return null;
+}
 
 function AuthenticatedLocationModal() {
   const user = useAuthStore(s => s.user);
@@ -22,19 +51,26 @@ function AuthenticatedLocationModal() {
   return <LocationSearchModal />;
 }
 
+import { CustomerNotificationProvider } from '@/components/notifications/CustomerNotificationProvider';
+
 export default function RootLayout() {
   const hydrateSession = useAuthStore(s => s.hydrateSession);
   
   useEffect(() => {
-    hydrateSession();
+    const timer = setTimeout(() => {
+      hydrateSession();
+    }, 0);
+    return () => clearTimeout(timer);
   }, [hydrateSession]);
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <QueryClientProvider client={queryClient}>
-        <BottomSheetModalProvider>
-          <GluestackUIProvider mode="light">
+        <CustomerNotificationProvider>
+          <BottomSheetModalProvider>
+            <GluestackUIProvider mode="light">
               <LocationProvider>
+                <GlobalBackHandler />
                 <AnimatedSplashOverlay />
                 <Stack screenOptions={{ headerShown: false }}>
                   <Stack.Screen name="login" />
@@ -43,8 +79,9 @@ export default function RootLayout() {
                 </Stack>
                 <AuthenticatedLocationModal />
               </LocationProvider>
-          </GluestackUIProvider>
-        </BottomSheetModalProvider>
+            </GluestackUIProvider>
+          </BottomSheetModalProvider>
+        </CustomerNotificationProvider>
       </QueryClientProvider>
     </GestureHandlerRootView>
   );

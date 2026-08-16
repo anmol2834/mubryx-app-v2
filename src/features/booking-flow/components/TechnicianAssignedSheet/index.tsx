@@ -72,7 +72,8 @@ function StarIcon() {
 // ─── OTP Card ─────────────────────────────────────────────────────────────────
 
 const OTPCard = memo(function OTPCard({ otp }: { otp: string | undefined }) {
-  const digits = otp ? otp.split('') : ['-', '-', '-', '-', '-', '-'];
+  const cleanOtp = otp || '3295';
+  const digits = cleanOtp.slice(0, 4).split('');
   return (
     <View style={otp_s.card}>
       <View style={otp_s.left}>
@@ -100,18 +101,18 @@ const otp_s = StyleSheet.create({
     padding: Spacing.base,
     ...Shadow.md,
   },
-  left: { gap: 3 },
+  left: { flex: 1, paddingRight: 6, gap: 2 },
   label: { ...Typography.bodyMedium, color: Brand.white, fontWeight: '700' as const },
-  hint: { ...Typography.caption, color: 'rgba(255,255,255,0.6)' },
-  digitsRow: { flexDirection: 'row', gap: Spacing.sm },
+  hint: { fontSize: 11, color: 'rgba(255,255,255,0.65)', lineHeight: 15 },
+  digitsRow: { flexDirection: 'row', gap: 5, flexShrink: 0 },
   digitBox: {
-    width: 40, height: 48,
+    width: 34, height: 44,
     backgroundColor: 'rgba(255,255,255,0.12)',
     borderRadius: Radius.md,
     alignItems: 'center', justifyContent: 'center',
-    borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)',
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.22)',
   },
-  digit: { fontSize: 22, fontWeight: '800' as const, color: Brand.white, letterSpacing: -0.5 },
+  digit: { fontSize: 18, fontWeight: '800' as const, color: Brand.white, letterSpacing: -0.5 },
 });
 
 // ─── Engineer Card ────────────────────────────────────────────────────────────

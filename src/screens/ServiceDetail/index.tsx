@@ -5,7 +5,7 @@ import { useCartQuery } from '@/hooks/queries/useCartQuery';
 import { useServicesQuery } from '@/hooks/queries/useServicesQuery';
 import { useCategory } from '@/hooks/useCategory';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { RefreshControl, ScrollView, StatusBar, StyleSheet, View } from 'react-native';
 import { BottomBookingBar } from './components/BottomBookingBar';
 import { ServiceCard } from './components/ServiceCard';
@@ -38,8 +38,9 @@ export default function ServiceDetailScreen() {
     const image = apiCategory?.image;
     const bgColor = apiCategory?.bgColor ?? '#EEF6FF';
 
-    const mappedServices: ServiceItem[] = apiServices.map((apiService) => ({
+    const mappedServices: (ServiceItem & { categoryId?: string })[] = apiServices.map((apiService) => ({
       id: apiService.id,
+      categoryId: apiService.categoryId,
       name: apiService.title,
       description: apiService.description,
       rating: String(apiService.rating),
@@ -62,7 +63,7 @@ export default function ServiceDetailScreen() {
     };
   }, [apiServices, slug, categoryId, apiCategory]);
 
-  // Derive selected services directly from centralized cart query state
+  // Derive selected services directly from centralized cart query state (Single Source of Truth)
   const selectedCartItemMap = useMemo(() => {
     const map = new Map<string, string>(); // serviceId -> cartItemId
     if (cart?.items) {
@@ -74,7 +75,7 @@ export default function ServiceDetailScreen() {
     return map;
   }, [cart?.items]);
 
-  const serverSelectedIds = useMemo(() => {
+  const selectedIds = useMemo(() => {
     const set = new Set<string>();
     for (const service of data.services) {
       if (selectedCartItemMap.has(service.id)) {
@@ -84,57 +85,55 @@ export default function ServiceDetailScreen() {
     return set;
   }, [data.services, selectedCartItemMap]);
 
-  // Local optimistic overrides map: serviceId -> boolean (true = checked, false = unchecked)
-  const [localOverrides, setLocalOverrides] = useState<Record<string, boolean>>({});
+  // Mutable ref to keep latest state without breaking callback references
+  const latestRef = useRef({
+    services: data.services,
+    selectedCartItemMap,
+    selectedIds,
+    categoryId: categoryId ?? apiCategory?.id ?? slug,
+    addItem,
+    removeItem,
+  });
 
-  const selectedIds = useMemo(() => {
-    const set = new Set<string>();
-    for (const service of data.services) {
-      const isOverrideSet = localOverrides[service.id] !== undefined;
-      const isSelected = isOverrideSet ? localOverrides[service.id] : serverSelectedIds.has(service.id);
-      if (isSelected) {
-        set.add(service.id);
-      }
+  useEffect(() => {
+    latestRef.current = {
+      services: data.services,
+      selectedCartItemMap,
+      selectedIds,
+      categoryId: categoryId ?? apiCategory?.id ?? slug,
+      addItem,
+      removeItem,
+    };
+  });
+
+  // 100% STABLE callback reference across all renders — preserves ServiceCard React.memo equality
+  const handleToggle = useCallback((serviceId: string) => {
+    const { selectedIds, selectedCartItemMap, services, categoryId, addItem, removeItem } =
+      latestRef.current;
+    const isCurrentlySelected = selectedIds.has(serviceId);
+
+    if (isCurrentlySelected) {
+      const cartItemId = selectedCartItemMap.get(serviceId) || serviceId;
+      removeItem.mutate({ itemId: cartItemId });
+    } else {
+      const serviceObj = services.find((s: any) => s.id === serviceId);
+      const exactCategoryId = (serviceObj as any)?.categoryId || categoryId || apiCategory?.id || slug;
+      addItem.mutate({
+        serviceId,
+        quantity: 1,
+        serviceData: {
+          id: serviceObj ? serviceObj.id : serviceId,
+          categoryId: exactCategoryId,
+          title: serviceObj ? serviceObj.name : 'Service',
+          description: serviceObj ? serviceObj.description : 'Service description',
+          price: serviceObj ? serviceObj.price : 499,
+          discountPrice: serviceObj ? serviceObj.originalPrice : undefined,
+          image: serviceObj ? serviceObj.image : undefined,
+          duration: serviceObj ? serviceObj.duration : '45 mins',
+        },
+      });
     }
-    return set;
-  }, [data.services, serverSelectedIds, localOverrides]);
-
-  const handleToggle = useCallback(
-    (serviceId: string) => {
-      const isCurrentlySelected = selectedIds.has(serviceId);
-      const nextSelected = !isCurrentlySelected;
-
-      // 1. INSTANT 0ms UI Feedback
-      setLocalOverrides((prev) => ({
-        ...prev,
-        [serviceId]: nextSelected,
-      }));
-
-      // 2. Trigger background mutation
-      if (isCurrentlySelected) {
-        const cartItemId = selectedCartItemMap.get(serviceId) || serviceId;
-        removeItem.mutate({ itemId: cartItemId });
-      } else {
-        const serviceObj = data.services.find((s: any) => s.id === serviceId);
-        addItem.mutate({
-          serviceId,
-          quantity: 1,
-          serviceData: serviceObj
-            ? {
-                id: serviceObj.id,
-                title: serviceObj.name,
-                description: serviceObj.description,
-                price: serviceObj.price,
-                discountPrice: serviceObj.originalPrice,
-                image: serviceObj.image,
-                duration: serviceObj.duration,
-              }
-            : undefined,
-        });
-      }
-    },
-    [selectedIds, selectedCartItemMap, data.services, addItem, removeItem]
-  );
+  }, []);
 
   const totalPrice = useMemo(() => {
     return data.services

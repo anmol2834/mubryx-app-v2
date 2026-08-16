@@ -14,9 +14,7 @@ function randomInt(min: number, max: number): number {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
-function generateOTP(): string {
-  return String(randomInt(1000, 9999));
-}
+
 
 // ─── Create Booking ───────────────────────────────────────────────────────────
 
@@ -49,7 +47,6 @@ export async function createBooking(
   // Mock engineer for the "assigned" sheet — real technician assignment is future work.
   // The booking is real; the engineer display is simulated.
   const engineer = MOCK_ENGINEERS[randomInt(0, MOCK_ENGINEERS.length - 1)];
-  const otp = generateOTP();
 
   // Build the primary service name from items
   const primaryItem = booking.items[0];
@@ -66,9 +63,9 @@ export async function createBooking(
   const scheduledTime = payload.displayScheduledTime ?? 'ASAP';
 
   return {
-    bookingId: booking.bookingId,
+    bookingId: booking.id || booking.bookingId,
     bookingNumber: booking.bookingNumber,
-    otp,
+    otp: booking.otp ?? '0000',
     status: 'assigned',
     engineer: null,
     estimatedArrival: 'Pending Assignment',

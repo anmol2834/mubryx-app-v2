@@ -1,10 +1,11 @@
 import { Brand, Radius, Spacing } from '@/constants/brand';
 import { memo, useEffect } from 'react';
-import { Dimensions, StyleSheet, View } from 'react-native';
+import { Dimensions, ScrollView, StyleSheet, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
 
 const { width: SCREEN_W } = Dimensions.get('window');
 const CARD_W = (SCREEN_W - Spacing.screen * 2 - Spacing.md * 2) / 3;
+const PROBLEM_CARD_W = SCREEN_W * 0.72;
 
 const SkeletonBlock = memo(function SkeletonBlock({
   width,
@@ -56,9 +57,9 @@ export const QuickServicesSkeleton = memo(function QuickServicesSkeleton() {
         <SkeletonBlock width={60} height={16} borderRadius={Radius.sm} />
       </View>
 
-      {/* Grid skeleton */}
+      {/* Grid skeleton — 9 cards covering all phone screen sizes */}
       <View style={s.grid}>
-        {[0, 1, 2, 3, 4, 5].map((i) => (
+        {[0, 1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
           <View key={i} style={s.cardWrap}>
             <View style={s.card}>
               <SkeletonBlock width={52} height={52} borderRadius={Radius.md} />
@@ -80,15 +81,47 @@ export const BrowseApplianceSkeleton = memo(function BrowseApplianceSkeleton() {
         <SkeletonBlock width={60} height={16} borderRadius={Radius.sm} />
       </View>
 
-      {/* List skeleton */}
-      <View style={s.horizontalRow}>
-        {[0, 1, 2].map((i) => (
+      {/* List skeleton — horizontal ScrollView for all screens */}
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.horizontalRow}>
+        {[0, 1, 2, 3, 4].map((i) => (
           <View key={i} style={s.applianceCard}>
-            <SkeletonBlock width={64} height={64} borderRadius={Radius.md} />
-            <SkeletonBlock width="80%" height={14} borderRadius={Radius.sm} />
+            <SkeletonBlock width="100%" height={110} borderRadius={Radius.md} />
+            <View style={{ gap: 6, width: '100%', marginTop: 8 }}>
+              <SkeletonBlock width="80%" height={14} borderRadius={Radius.sm} />
+            </View>
           </View>
         ))}
+      </ScrollView>
+    </View>
+  );
+});
+
+export const PopularProblemsSkeleton = memo(function PopularProblemsSkeleton() {
+  return (
+    <View style={s.wrapper}>
+      {/* Header skeleton */}
+      <View style={s.header}>
+        <SkeletonBlock width={160} height={22} borderRadius={Radius.sm} />
+        <SkeletonBlock width={60} height={16} borderRadius={Radius.sm} />
       </View>
+
+      {/* List skeleton — horizontal ScrollView for problem cards */}
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.horizontalRow}>
+        {[0, 1, 2].map((i) => (
+          <View key={i} style={s.problemCard}>
+            <View style={s.problemTopRow}>
+              <SkeletonBlock width={48} height={48} borderRadius={Radius.md} />
+              <SkeletonBlock width={64} height={22} borderRadius={Radius.full} />
+            </View>
+            <SkeletonBlock width="75%" height={18} borderRadius={Radius.sm} />
+            <SkeletonBlock width="90%" height={12} borderRadius={Radius.sm} />
+            <View style={s.problemBottomRow}>
+              <SkeletonBlock width={70} height={16} borderRadius={Radius.sm} />
+              <SkeletonBlock width={90} height={32} borderRadius={Radius.full} />
+            </View>
+          </View>
+        ))}
+      </ScrollView>
     </View>
   );
 });
@@ -125,17 +158,35 @@ const s = StyleSheet.create({
     paddingVertical: Spacing.sm,
   },
   horizontalRow: {
-    flexDirection: 'row',
     gap: Spacing.md,
   },
   applianceCard: {
-    width: 120,
+    width: SCREEN_W * 0.44,
     borderRadius: Radius.lg,
     backgroundColor: Brand.white,
     borderWidth: 1,
     borderColor: Brand.borderLight,
-    padding: Spacing.md,
-    alignItems: 'center',
+    padding: Spacing.sm,
     gap: Spacing.sm,
+  },
+  problemCard: {
+    width: PROBLEM_CARD_W,
+    borderRadius: Radius.xl,
+    backgroundColor: Brand.white,
+    borderWidth: 1,
+    borderColor: Brand.borderLight,
+    padding: Spacing.base,
+    gap: Spacing.sm,
+  },
+  problemTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  problemBottomRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 4,
   },
 });

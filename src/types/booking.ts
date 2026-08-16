@@ -48,7 +48,6 @@ export interface BookingPricing {
   subtotal: number;
   discount: number;
   tax: number;
-  platformFee: number;
   total: number;
 }
 
@@ -60,6 +59,7 @@ export interface BookingStatusHistoryEntry {
 }
 
 export interface Booking {
+  id?: string;
   bookingId: string;
   bookingNumber: string;
   status: BookingStatus;
@@ -72,6 +72,8 @@ export interface Booking {
   pricing: BookingPricing;
   customerNotes?: string | null;
   technicianId?: string | null;
+  otp?: string | null;
+  happyCode?: string | null;
   cancelledAt?: string | null;
   cancellationReason?: string | null;
   createdAt: string;

@@ -2,8 +2,9 @@ import { useAuthStore } from '@/store/authStore';
 import { useCategoriesQuery } from '@/hooks/queries/useCategoriesQuery';
 import { useCartQuery } from '@/hooks/queries/useCartQuery';
 import { Redirect } from 'expo-router';
-import { memo, useCallback, useState } from 'react';
+import { memo, useCallback, useEffect, useState } from 'react';
 import {
+    BackHandler,
     RefreshControl,
     ScrollView,
     StatusBar,
@@ -44,6 +45,23 @@ export default function HomeScreen() {
   const { isRefetching: isCatRefetching, refetch: refetchCategories } = useCategoriesQuery();
   const { isRefetching: isCartRefetching, refetch: refetchCart } = useCartQuery();
   const isRefreshing = isCatRefetching || isCartRefetching;
+
+  useEffect(() => {
+    const onBackPress = () => {
+      if (notifVisible) {
+        setNotifVisible(false);
+        return true;
+      }
+      if (activeTab !== 'home') {
+        setActiveTab('home');
+        return true;
+      }
+      return false;
+    };
+
+    const sub = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+    return () => sub.remove();
+  }, [activeTab, notifVisible]);
 
   const handleHomeRefresh = useCallback(() => {
     refetchCategories();

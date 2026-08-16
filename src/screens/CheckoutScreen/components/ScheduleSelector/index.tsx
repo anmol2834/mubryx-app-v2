@@ -184,7 +184,7 @@ export const ScheduleCard = memo(function ScheduleCard({
           </View>
           <View style={cardS.optionTexts}>
             <Text style={[cardS.optionTitle, mode === 'asap' && cardS.optionTitleActive]}>
-              As Soon As Possible
+              Instant
             </Text>
             <Text style={cardS.optionSub}>Technician arrives within 2–4 hours</Text>
           </View>

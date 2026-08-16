@@ -6,8 +6,8 @@ import Svg, { Circle, Path, Polyline, Rect } from 'react-native-svg';
 
 // ─── Icons ────────────────────────────────────────────────────────────────────
 
-function UpiIcon({ active }: { active: boolean }) {
-  const c = active ? Brand.primary : Brand.textMuted;
+function UpiIcon({ active, disabled }: { active: boolean; disabled?: boolean }) {
+  const c = disabled ? Brand.textMuted : active ? Brand.primary : Brand.textMuted;
   return (
     <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
       <Path d="M12 2L2 7l10 5 10-5-10-5z" stroke={c} strokeWidth={1.8} strokeLinejoin="round" />
@@ -17,8 +17,8 @@ function UpiIcon({ active }: { active: boolean }) {
   );
 }
 
-function CardIcon({ active }: { active: boolean }) {
-  const c = active ? Brand.primary : Brand.textMuted;
+function CardIcon({ active, disabled }: { active: boolean; disabled?: boolean }) {
+  const c = disabled ? Brand.textMuted : active ? Brand.primary : Brand.textMuted;
   return (
     <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
       <Rect x="1" y="4" width="22" height="16" rx="2" ry="2" stroke={c} strokeWidth={1.8} />
@@ -27,8 +27,8 @@ function CardIcon({ active }: { active: boolean }) {
   );
 }
 
-function BankIcon({ active }: { active: boolean }) {
-  const c = active ? Brand.primary : Brand.textMuted;
+function BankIcon({ active, disabled }: { active: boolean; disabled?: boolean }) {
+  const c = disabled ? Brand.textMuted : active ? Brand.primary : Brand.textMuted;
   return (
     <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
       <Path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" stroke={c} strokeWidth={1.8} strokeLinejoin="round" />
@@ -37,8 +37,8 @@ function BankIcon({ active }: { active: boolean }) {
   );
 }
 
-function WalletIcon({ active }: { active: boolean }) {
-  const c = active ? Brand.primary : Brand.textMuted;
+function WalletIcon({ active, disabled }: { active: boolean; disabled?: boolean }) {
+  const c = disabled ? Brand.textMuted : active ? Brand.primary : Brand.textMuted;
   return (
     <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
       <Path d="M20 7H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z" stroke={c} strokeWidth={1.8} />
@@ -67,10 +67,10 @@ function RadioSelected() {
   );
 }
 
-function RadioEmpty() {
+function RadioEmpty({ disabled }: { disabled?: boolean }) {
   return (
     <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
-      <Circle cx="12" cy="12" r="10" stroke={Brand.border} strokeWidth={2} />
+      <Circle cx="12" cy="12" r="10" stroke={disabled ? Brand.borderLight : Brand.border} strokeWidth={2} />
     </Svg>
   );
 }
@@ -82,6 +82,7 @@ interface PaymentOption {
   title: string;
   subtitle: string;
   badge?: string;
+  isAvailable: boolean;
   icon: (active: boolean) => React.ReactNode;
 }
 
@@ -89,39 +90,50 @@ const PAYMENT_OPTIONS: PaymentOption[] = [
   {
     id: 'cash',
     title: 'Cash on Service',
-    subtitle: 'Pay when the technician arrives',
-    badge: 'Recommended',
+    subtitle: 'Pay when technician completes service',
+    badge: 'Available',
+    isAvailable: true,
     icon: (a) => <CashIcon active={a} />,
   },
   {
     id: 'upi',
     title: 'UPI',
     subtitle: 'GPay, PhonePe, Paytm & more',
-    icon: (a) => <UpiIcon active={a} />,
+    badge: 'Coming Soon',
+    isAvailable: false,
+    icon: (a) => <UpiIcon active={a} disabled={true} />,
   },
   {
     id: 'credit_card',
     title: 'Credit Card',
     subtitle: 'Visa, Mastercard, Amex',
-    icon: (a) => <CardIcon active={a} />,
+    badge: 'Coming Soon',
+    isAvailable: false,
+    icon: (a) => <CardIcon active={a} disabled={true} />,
   },
   {
     id: 'debit_card',
     title: 'Debit Card',
     subtitle: 'All major banks supported',
-    icon: (a) => <CardIcon active={a} />,
+    badge: 'Coming Soon',
+    isAvailable: false,
+    icon: (a) => <CardIcon active={a} disabled={true} />,
   },
   {
     id: 'net_banking',
     title: 'Net Banking',
     subtitle: 'All major banks',
-    icon: (a) => <BankIcon active={a} />,
+    badge: 'Coming Soon',
+    isAvailable: false,
+    icon: (a) => <BankIcon active={a} disabled={true} />,
   },
   {
     id: 'wallet',
     title: 'Wallet',
     subtitle: 'Paytm, Amazon Pay & more',
-    icon: (a) => <WalletIcon active={a} />,
+    badge: 'Coming Soon',
+    isAvailable: false,
+    icon: (a) => <WalletIcon active={a} disabled={true} />,
   },
 ];
 
@@ -137,7 +149,11 @@ export const PaymentMethods = memo(function PaymentMethods({
   onSelect,
 }: PaymentMethodsProps) {
   const handleSelect = useCallback(
-    (id: PaymentMethod) => onSelect(id),
+    (opt: PaymentOption) => {
+      if (opt.isAvailable) {
+        onSelect(opt.id);
+      }
+    },
     [onSelect]
   );
 
@@ -146,31 +162,43 @@ export const PaymentMethods = memo(function PaymentMethods({
       <Text style={styles.heading}>Payment Method</Text>
 
       {PAYMENT_OPTIONS.map((opt, index) => {
-        const active = selected === opt.id;
+        const active = selected === opt.id && opt.isAvailable;
+        const disabled = !opt.isAvailable;
+
         return (
           <View key={opt.id}>
             {index > 0 && <View style={styles.rowDivider} />}
             <Pressable
-              style={({ pressed }) => [styles.row, active && styles.rowActive, pressed && styles.rowPressed]}
-              onPress={() => handleSelect(opt.id)}
+              style={({ pressed }) => [
+                styles.row,
+                active && styles.rowActive,
+                disabled && styles.rowDisabled,
+                pressed && opt.isAvailable && styles.rowPressed,
+              ]}
+              disabled={disabled}
+              onPress={() => handleSelect(opt)}
               android_ripple={null}
               accessibilityRole="radio"
-              accessibilityState={{ checked: active }}>
-              <View style={[styles.iconWrap, active && styles.iconWrapActive]}>
+              accessibilityState={{ checked: active, disabled }}>
+              <View style={[styles.iconWrap, active && styles.iconWrapActive, disabled && styles.iconWrapDisabled]}>
                 {opt.icon(active)}
               </View>
               <View style={styles.texts}>
                 <View style={styles.titleRow}>
-                  <Text style={[styles.title, active && styles.titleActive]}>{opt.title}</Text>
+                  <Text style={[styles.title, active && styles.titleActive, disabled && styles.titleDisabled]}>
+                    {opt.title}
+                  </Text>
                   {opt.badge && (
-                    <View style={styles.badge}>
-                      <Text style={styles.badgeText}>{opt.badge}</Text>
+                    <View style={[styles.badge, disabled ? styles.badgeDisabled : styles.badgeAvailable]}>
+                      <Text style={[styles.badgeText, disabled ? styles.badgeTextDisabled : styles.badgeTextAvailable]}>
+                        {opt.badge}
+                      </Text>
                     </View>
                   )}
                 </View>
-                <Text style={styles.subtitle}>{opt.subtitle}</Text>
+                <Text style={[styles.subtitle, disabled && styles.subtitleDisabled]}>{opt.subtitle}</Text>
               </View>
-              {active ? <RadioSelected /> : <RadioEmpty />}
+              {active ? <RadioSelected /> : <RadioEmpty disabled={disabled} />}
             </Pressable>
           </View>
         );
@@ -203,6 +231,7 @@ const styles = StyleSheet.create({
     borderRadius: Radius.lg,
   },
   rowActive: { backgroundColor: Brand.primarySoft },
+  rowDisabled: { opacity: 0.45 },
   rowPressed: { opacity: 0.7 },
   rowDivider: {
     height: 1,
@@ -219,20 +248,34 @@ const styles = StyleSheet.create({
     flexShrink: 0,
   },
   iconWrapActive: { backgroundColor: Brand.white },
+  iconWrapDisabled: { backgroundColor: '#F3F4F6' },
   texts: { flex: 1, gap: 2 },
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
   title: { ...Typography.bodyMedium, color: Brand.textPrimary, fontWeight: '600' },
   titleActive: { color: Brand.primary, fontWeight: '700' },
+  titleDisabled: { color: Brand.textMuted },
   subtitle: { ...Typography.caption, color: Brand.textMuted },
+  subtitleDisabled: { color: Brand.textMuted, opacity: 0.8 },
   badge: {
-    backgroundColor: Brand.successSoft,
     borderRadius: Radius.full,
     paddingHorizontal: 7,
     paddingVertical: 2,
   },
+  badgeAvailable: {
+    backgroundColor: Brand.successSoft,
+  },
+  badgeDisabled: {
+    backgroundColor: '#F3F4F6',
+  },
   badgeText: {
     ...Typography.caption,
-    color: Brand.success,
     fontWeight: '700',
+    fontSize: 10,
+  },
+  badgeTextAvailable: {
+    color: Brand.success,
+  },
+  badgeTextDisabled: {
+    color: Brand.textMuted,
   },
 });
