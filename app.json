@@ -1,4 +1,4 @@
-{
+﻿{
   "expo": {
     "name": "Mubryx-App",
     "slug": "Mubryx-App",
@@ -37,8 +37,8 @@
       [
         "expo-notifications",
         {
-          "icon": "./assets/images/icon.png",
-          "color": "#1565C0"
+          "icon": "./assets/images/notification-icon.png",
+          "color": "#000000"
         }
       ]
     ],
@@ -48,3 +48,4 @@
     }
   }
 }
+
