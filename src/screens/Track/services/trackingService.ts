@@ -4,7 +4,7 @@ import { isLiveBooking, sortBookingsByProgress } from '../utils';
 
 import { STAGE_PRIORITY, type LiveStageId } from '../types';
 
-function mapApiBookingToActiveBooking(b: any): ActiveBooking {
+export function mapApiBookingToActiveBooking(b: any): ActiveBooking {
   const firstItem = b.items?.[0] || b.service || {};
   const serviceTitle =
     firstItem.title ||
@@ -40,8 +40,9 @@ function mapApiBookingToActiveBooking(b: any): ActiveBooking {
         )
       : firstItem.lineTotal ?? firstItem.unitPrice ?? 0);
 
-  const techObj = b.technician || b.assignedTechnician;
-  const techName = techObj?.fullName || techObj?.name || (techObj?.user ? techObj.user.name : null);
+  const techObj = b.technician || b.assignedTechnician || b.engineer || b.items?.[0]?.technician;
+  const techName = techObj?.fullName || techObj?.name || (techObj?.user ? techObj.user.name : null) || b.engineer?.name;
+  const techPhone = techObj?.phone || (techObj?.user ? techObj.user.phone : null) || b.engineer?.phone || b.technician?.phone || '';
 
   const isAssigned = ['assigned', 'journey', 'nearby', 'arrived', 'started', 'completed'].includes(currentStage);
   const isJourney = ['journey', 'nearby', 'arrived', 'started', 'completed'].includes(currentStage);
@@ -68,14 +69,16 @@ function mapApiBookingToActiveBooking(b: any): ActiveBooking {
     warranty: b.warranty || '30 Days Warranty',
     estimatedDuration: firstItem.duration || b.estimatedDuration || '45 mins',
     engineer: techName ? {
-      id: techObj.id || techObj._id || 'tech1',
+      id: techObj?.id || techObj?._id || 'tech1',
       name: techName,
       avatarInitials: techName.slice(0, 2).toUpperCase(),
       avatarColor: '#1565C0',
-      rating: String(techObj.rating || 4.9),
-      experience: techObj.experience || '5+ Yrs',
+      rating: String(techObj?.rating || 4.9),
+      experience: techObj?.experience || '5+ Yrs',
       isVerified: true,
-      phone: techObj.phone || (techObj.user ? techObj.user.phone : '') || '',
+      phone: techPhone,
+      photo: techObj?.photo || techObj?.profilePhoto || null,
+      profilePhoto: techObj?.profilePhoto || techObj?.photo || null,
     } : null,
     address: b.serviceAddress?.completeAddress || b.address?.completeAddress || b.address?.address || 'Service Location',
     landmark: b.serviceAddress?.landmark || b.address?.landmark || '',
@@ -83,6 +86,8 @@ function mapApiBookingToActiveBooking(b: any): ActiveBooking {
     contactPhone: b.address?.contactPhone || '',
     otp: b.otp || null,
     happyCode: b.happyCode || null,
+    invoiceNumber: b.invoiceNumber || null,
+    invoiceUrl: b.invoiceUrl || null,
     stages: [
       { id: 'confirmed', title: 'Booking Confirmed', description: 'Service confirmed', timestamp: b.createdAt || '', status: 'done' },
       { id: 'assigned', title: 'Technician Assigned', description: techName ? `${techName} assigned` : 'Assigning technician', timestamp: null, status: isAssigned ? 'done' : 'pending' },

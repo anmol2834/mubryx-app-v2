@@ -1,7 +1,9 @@
-import { Brand, Radius, Shadow, Spacing, Typography } from '@/constants/brand';
+import { Brand, Radius, Spacing, Typography } from '@/constants/brand';
 import type { CartItem } from '@/types/cart';
-import { memo } from 'react';
+import { memo, useCallback, useEffect, useRef } from 'react';
 import {
+  Animated,
+  Dimensions,
   Modal,
   Platform,
   Pressable,
@@ -14,12 +16,15 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 
-function CloseIcon() {
+const { height: SCREEN_H } = Dimensions.get('window');
+const SHEET_HEIGHT = SCREEN_H * 0.72;
+
+function XIcon() {
   return (
-    <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
+    <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
       <Path
         d="M18 6L6 18M6 6l12 12"
-        stroke={Brand.textPrimary}
+        stroke={Brand.textSecondary}
         strokeWidth={2}
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -28,13 +33,20 @@ function CloseIcon() {
   );
 }
 
-function ChevronDownIcon() {
+function ReceiptIcon({ color }: { color: string }) {
   return (
     <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
       <Path
-        d="M6 9l6 6 6-6"
-        stroke={Brand.textSecondary}
-        strokeWidth={2}
+        d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1-2-1z"
+        stroke={color}
+        strokeWidth={1.8}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <Path
+        d="M8 8h8M8 12h8M8 16h5"
+        stroke={color}
+        strokeWidth={1.8}
         strokeLinecap="round"
         strokeLinejoin="round"
       />
@@ -65,55 +77,97 @@ export const PriceBreakdownModal = memo(function PriceBreakdownModal({
   grandTotal,
 }: PriceBreakdownModalProps) {
   const insets = useSafeAreaInsets();
+  const slideAnim = useRef(new Animated.Value(SHEET_HEIGHT)).current;
+  const backdropAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (visible) {
+      Animated.parallel([
+        Animated.spring(slideAnim, {
+          toValue: 0,
+          useNativeDriver: true,
+          damping: 20,
+          stiffness: 200,
+        }),
+        Animated.timing(backdropAnim, {
+          toValue: 1,
+          duration: 220,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    } else {
+      slideAnim.setValue(SHEET_HEIGHT);
+      backdropAnim.setValue(0);
+    }
+  }, [visible]);
+
+  const handleClose = useCallback(() => {
+    Animated.parallel([
+      Animated.timing(slideAnim, {
+        toValue: SHEET_HEIGHT,
+        duration: 240,
+        useNativeDriver: true,
+      }),
+      Animated.timing(backdropAnim, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+    ]).start(() => onClose());
+  }, [onClose]);
 
   return (
     <Modal
       visible={visible}
       transparent
-      animationType="slide"
+      animationType="none"
       statusBarTranslucent
-      onRequestClose={onClose}>
-      <TouchableWithoutFeedback onPress={onClose}>
-        <View style={styles.backdrop} />
+      onRequestClose={handleClose}>
+      {/* Backdrop */}
+      <TouchableWithoutFeedback onPress={handleClose}>
+        <Animated.View style={[sheetS.backdrop, { opacity: backdropAnim }]} />
       </TouchableWithoutFeedback>
 
-      <View
+      {/* Sheet panel */}
+      <Animated.View
         style={[
-          styles.sheet,
-          { paddingBottom: Math.max(insets.bottom, Spacing.base) + Spacing.sm },
+          sheetS.sheet,
+          { paddingBottom: insets.bottom + 16 },
+          { transform: [{ translateY: slideAnim }] },
         ]}>
-        {/* Handle Bar */}
-        <Pressable onPress={onClose} style={styles.handleWrap}>
-          <View style={styles.handle} />
-        </Pressable>
+        {/* Handle */}
+        <View style={sheetS.handleWrap}>
+          <View style={sheetS.handle} />
+        </View>
 
         {/* Header */}
-        <View style={styles.headerRow}>
-          <Text style={styles.headerTitle}>Price Breakdown</Text>
-          <Pressable
-            style={({ pressed }) => [styles.closeBtn, pressed && styles.pressed]}
-            onPress={onClose}
-            accessibilityLabel="Close price breakdown">
-            <CloseIcon />
+        <View style={sheetS.header}>
+          <View style={sheetS.headerLeft}>
+            <ReceiptIcon color={Brand.primary} />
+            <Text style={sheetS.headerTitle}>Price Breakdown</Text>
+          </View>
+          <Pressable style={sheetS.closeBtn} onPress={handleClose} hitSlop={8} android_ripple={null}>
+            <XIcon />
           </Pressable>
         </View>
 
         <ScrollView
-          style={styles.scroll}
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}>
+          style={sheetS.scrollArea}
+          contentContainerStyle={sheetS.scrollContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled">
 
           {/* Selected Services list */}
-          <Text style={styles.sectionLabel}>Selected Services</Text>
-          <View style={styles.card}>
+          <Text style={sheetS.sectionLabel}>Selected Services</Text>
+          <View style={sheetS.card}>
             {items.map((item, idx) => {
               const name = item.service?.title || (item as any).title || 'Service';
               return (
-                <View key={item.id || idx} style={styles.itemRow}>
-                  <Text style={styles.itemName} numberOfLines={1}>
+                <View key={item.id || idx} style={sheetS.itemRow}>
+                  <Text style={sheetS.itemName} numberOfLines={1}>
                     {name} {item.quantity > 1 ? `× ${item.quantity}` : ''}
                   </Text>
-                  <Text style={styles.itemPrice}>
+                  <Text style={sheetS.itemPrice}>
                     {formatPrice(item.unitPrice * item.quantity)}
                   </Text>
                 </View>
@@ -122,123 +176,100 @@ export const PriceBreakdownModal = memo(function PriceBreakdownModal({
           </View>
 
           {/* Detailed Calculations */}
-          <Text style={[styles.sectionLabel, { marginTop: Spacing.md }]}>
+          <Text style={[sheetS.sectionLabel, { marginTop: Spacing.base }]}>
             Bill Details
           </Text>
-          <View style={styles.card}>
-            <View style={styles.row}>
-              <Text style={styles.rowLabel}>Subtotal (Selected Services)</Text>
-              <Text style={styles.rowValue}>{formatPrice(subtotal)}</Text>
+          <View style={sheetS.card}>
+            <View style={sheetS.row}>
+              <Text style={sheetS.rowLabel}>Subtotal (Selected Services)</Text>
+              <Text style={sheetS.rowValue}>{formatPrice(subtotal)}</Text>
             </View>
 
             {discount > 0 && (
-              <View style={styles.row}>
-                <Text style={[styles.rowLabel, { color: Brand.success }]}>
+              <View style={sheetS.row}>
+                <Text style={[sheetS.rowLabel, { color: Brand.success }]}>
                   Coupon Savings
                 </Text>
-                <Text style={[styles.rowValue, { color: Brand.success }]}>
+                <Text style={[sheetS.rowValue, { color: Brand.success }]}>
                   -{formatPrice(discount)}
                 </Text>
               </View>
             )}
 
-            <View style={styles.row}>
-              <Text style={styles.rowLabel}>GST (18%)</Text>
-              <Text style={styles.rowValue}>{formatPrice(gst)}</Text>
+            <View style={sheetS.row}>
+              <Text style={sheetS.rowLabel}>GST (18%)</Text>
+              <Text style={sheetS.rowValue}>{formatPrice(gst)}</Text>
             </View>
 
-            <View style={styles.divider} />
+            <View style={sheetS.divider} />
 
-            <View style={styles.rowTotal}>
-              <Text style={styles.totalLabel}>Total Amount</Text>
-              <Text style={styles.totalPrice}>{formatPrice(grandTotal)}</Text>
+            <View style={sheetS.rowTotal}>
+              <Text style={sheetS.totalLabel}>Total Amount</Text>
+              <Text style={sheetS.totalPrice}>{formatPrice(grandTotal)}</Text>
             </View>
           </View>
         </ScrollView>
 
-        {/* Done / Close Button */}
-        <Pressable
-          style={({ pressed }) => [styles.doneBtn, pressed && styles.pressed]}
-          onPress={onClose}>
-          <Text style={styles.doneBtnText}>Close</Text>
-        </Pressable>
-      </View>
+        {/* Footer */}
+        <View style={sheetS.footer}>
+          <Pressable style={sheetS.confirmBtn} onPress={handleClose} android_ripple={null}>
+            <Text style={sheetS.confirmText}>Got It</Text>
+          </Pressable>
+        </View>
+      </Animated.View>
     </Modal>
   );
 });
 
-const styles = StyleSheet.create({
+const sheetS = StyleSheet.create({
   backdrop: {
     ...StyleSheet.absoluteFill,
-    backgroundColor: 'rgba(10, 22, 40, 0.5)',
+    backgroundColor: 'rgba(10,22,40,0.55)',
   },
   sheet: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
+    height: SHEET_HEIGHT,
     backgroundColor: Brand.white,
     borderTopLeftRadius: Radius.xxl,
     borderTopRightRadius: Radius.xxl,
-    paddingHorizontal: Spacing.screen,
-    paddingTop: 8,
-    maxHeight: '80%',
     ...Platform.select({
       ios: {
         shadowColor: '#000',
         shadowOffset: { width: 0, height: -4 },
-        shadowOpacity: 0.15,
-        shadowRadius: 16,
+        shadowOpacity: 0.18,
+        shadowRadius: 20,
       },
-      android: { elevation: 20 },
+      android: { elevation: 24 },
     }),
   },
-  handleWrap: {
-    alignItems: 'center',
-    paddingVertical: 8,
-  },
+  handleWrap: { alignItems: 'center', paddingTop: 10, paddingBottom: 4 },
   handle: {
-    width: 36,
-    height: 4,
-    borderRadius: 2,
+    width: 40, height: 4, borderRadius: 2,
     backgroundColor: Brand.border,
   },
-  headerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingBottom: Spacing.sm,
-    marginBottom: Spacing.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: Brand.borderLight,
+  header: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: Spacing.screen, paddingVertical: Spacing.md,
+    borderBottomWidth: 1, borderBottomColor: Brand.borderLight,
   },
-  headerTitle: {
-    ...Typography.h3,
-    color: Brand.textPrimary,
-  },
+  headerLeft: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
+  headerTitle: { ...Typography.h4, color: Brand.textPrimary, fontWeight: '700' },
   closeBtn: {
-    padding: 6,
-    borderRadius: Radius.full,
-    backgroundColor: Brand.surface,
+    width: 34, height: 34, borderRadius: Radius.full,
+    backgroundColor: Brand.surface, alignItems: 'center', justifyContent: 'center',
   },
-  scroll: {
-    maxHeight: 320,
-  },
-  scrollContent: {
-    paddingVertical: Spacing.xs,
-    gap: Spacing.xs,
-  },
+  scrollArea: { flex: 1 },
+  scrollContent: { paddingHorizontal: Spacing.screen, paddingTop: Spacing.base, paddingBottom: Spacing.sm },
   sectionLabel: {
-    ...Typography.caption,
-    color: Brand.textMuted,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: 0.6,
-    marginBottom: 6,
+    ...Typography.caption, color: Brand.textMuted, textTransform: 'uppercase',
+    letterSpacing: 0.8, fontWeight: '700', marginBottom: Spacing.sm,
   },
   card: {
-    backgroundColor: Brand.offWhite,
-    borderRadius: Radius.lg,
+    backgroundColor: Brand.white,
+    borderRadius: Radius.xl,
     padding: Spacing.base,
     borderWidth: 1,
     borderColor: Brand.borderLight,
@@ -295,19 +326,22 @@ const styles = StyleSheet.create({
     color: Brand.primary,
     letterSpacing: -0.3,
   },
-  doneBtn: {
+  footer: {
+    paddingHorizontal: Spacing.screen,
+    paddingTop: Spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: Brand.borderLight,
+  },
+  confirmBtn: {
     backgroundColor: Brand.navy,
     borderRadius: Radius.xl,
-    paddingVertical: 14,
+    paddingVertical: 16,
     alignItems: 'center',
-    marginTop: Spacing.base,
   },
-  doneBtnText: {
+  confirmText: {
     ...Typography.bodyMedium,
     color: Brand.white,
     fontWeight: '700',
-  },
-  pressed: {
-    opacity: 0.7,
+    letterSpacing: -0.2,
   },
 });

@@ -13,6 +13,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { CURRENT_USER_ID } from '../constants';
 import { getActiveBookings } from '../services/trackingService';
+import { socketManager } from '@/lib/socket';
+import { isLiveBooking } from '../utils';
 import type { ActiveBooking, TrackView } from '../types';
 
 export interface UseTrackRouterReturn {
@@ -22,16 +24,15 @@ export interface UseTrackRouterReturn {
   onRefresh: () => Promise<void>;
   /** Call when user taps a booking card to drill into detail */
   openDetail: (bookingId: string) => void;
-  /** Call to go back from detail → list (only used when list was showing) */
+  /** Call to go back from detail → list / empty state */
   backFromDetail: () => void;
   retry: () => void;
 }
 
-export function useTrackRouter(isActive: boolean): UseTrackRouterReturn {
+export function useTrackRouter(isActive: boolean, targetBookingId?: string | null): UseTrackRouterReturn {
   const [view, setView]       = useState<TrackView>({ kind: 'loading' });
   const [bookings, setBookings] = useState<ActiveBooking[]>([]);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  // Remember if we came from the list, so backFromDetail can return there
   const cameFromList = useRef(false);
   const hasLoaded    = useRef(false);
 
@@ -41,7 +42,22 @@ export function useTrackRouter(isActive: boolean): UseTrackRouterReturn {
       const active = await getActiveBookings(CURRENT_USER_ID);
       setBookings(active);
 
-      if (active.length === 0) {
+      if (targetBookingId) {
+        const found = active.find((b) => b.id === targetBookingId);
+        if (found && isLiveBooking(found)) {
+          setView({ kind: 'detail', bookingId: targetBookingId });
+          cameFromList.current = false;
+        } else if (active.length === 0) {
+          setView({ kind: 'empty' });
+          cameFromList.current = false;
+        } else if (active.length === 1) {
+          setView({ kind: 'detail', bookingId: active[0].id });
+          cameFromList.current = false;
+        } else {
+          setView({ kind: 'list' });
+          cameFromList.current = true;
+        }
+      } else if (active.length === 0) {
         setView({ kind: 'empty' });
         cameFromList.current = false;
       } else if (active.length === 1) {
@@ -52,43 +68,86 @@ export function useTrackRouter(isActive: boolean): UseTrackRouterReturn {
         cameFromList.current = true;
       }
     } catch {
-      // On error, stay on empty state — graceful degradation
       setView({ kind: 'empty' });
     }
-  }, []);
+  }, [targetBookingId]);
 
   const handleRefresh = useCallback(async () => {
     setIsRefreshing(true);
     try {
       const active = await getActiveBookings(CURRENT_USER_ID);
       setBookings(active);
-      if (active.length === 0) setView({ kind: 'empty' });
-      else if (active.length === 1) setView({ kind: 'detail', bookingId: active[0].id });
-      else setView({ kind: 'list' });
+
+      if (active.length === 0) {
+        setView({ kind: 'empty' });
+      } else if (active.length === 1) {
+        setView({ kind: 'detail', bookingId: active[0].id });
+      } else {
+        setView({ kind: 'list' });
+      }
     } catch {
-      // Keep state
+      // Keep existing state on error
     } finally {
       setIsRefreshing(false);
     }
   }, []);
 
-  // Load when tab becomes active (only once per mount cycle)
+  // Load when tab becomes active or when targetBookingId changes
   useEffect(() => {
+    if (targetBookingId) {
+      load();
+      return;
+    }
     if (!isActive || hasLoaded.current) return;
     hasLoaded.current = true;
     load();
-  }, [isActive, load]);
+  }, [isActive, targetBookingId, load]);
+
+  // Real-Time Socket event listener for active tracking updates
+  useEffect(() => {
+    const socket = socketManager.connect();
+    if (!socket) return;
+
+    const onRealtimeUpdate = () => {
+      console.log('[useTrackRouter] Live socket event received -> refreshing track state');
+      handleRefresh();
+    };
+
+    socket.on('booking:status_changed', onRealtimeUpdate);
+    socket.on('booking:assigned', onRealtimeUpdate);
+    socket.on('booking:review_requested', onRealtimeUpdate);
+    socket.on('booking:happy_code_generated', onRealtimeUpdate);
+    socket.on('booking:completed', onRealtimeUpdate);
+
+    return () => {
+      socket.off('booking:status_changed', onRealtimeUpdate);
+      socket.off('booking:assigned', onRealtimeUpdate);
+      socket.off('booking:review_requested', onRealtimeUpdate);
+      socket.off('booking:happy_code_generated', onRealtimeUpdate);
+      socket.off('booking:completed', onRealtimeUpdate);
+    };
+  }, [handleRefresh]);
 
   const openDetail = useCallback((bookingId: string) => {
     setView({ kind: 'detail', bookingId });
   }, []);
 
-  const backFromDetail = useCallback(() => {
-    if (cameFromList.current && bookings.length >= 2) {
-      setView({ kind: 'list' });
+  const backFromDetail = useCallback(async () => {
+    try {
+      const active = await getActiveBookings(CURRENT_USER_ID);
+      setBookings(active);
+
+      if (active.length === 0) {
+        setView({ kind: 'empty' });
+      } else if (active.length === 1) {
+        setView({ kind: 'detail', bookingId: active[0].id });
+      } else {
+        setView({ kind: 'list' });
+      }
+    } catch {
+      setView({ kind: 'empty' });
     }
-    // If single-booking flow, back is handled by onBack (goes to previous tab)
-  }, [bookings.length]);
+  }, []);
 
   const retry = useCallback(() => {
     hasLoaded.current = false;

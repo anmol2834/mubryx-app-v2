@@ -6,6 +6,7 @@ import {
   FINAL_METRICS,
 } from '../constants';
 import { cancelBooking, createBooking } from '../services/bookingService';
+import { bookingService as apiBookingService } from '@/services/bookingService';
 import { queryClient } from '@/api/queryClient';
 import { socketManager } from '@/lib/socket';
 import { useAuthStore } from '@/store/authStore';
@@ -155,9 +156,10 @@ export function useBookingFlow(): UseBookingFlowReturn {
 
   // ─── Socket Listener for Booking Assignment & Room Subscription ───────────
   useEffect(() => {
-    if (!bookingResult?.bookingId) return;
+    const targetBookingId = bookingResult?.bookingId;
+    if (!targetBookingId) return;
 
-    socketManager.joinBooking(bookingResult.bookingId);
+    socketManager.joinBooking(targetBookingId);
     const socket = socketManager.connect();
     if (!socket) return;
 
@@ -166,8 +168,46 @@ export function useBookingFlow(): UseBookingFlowReturn {
       const assignedBookingId = payload?.bookingId || payload?.id;
       if (bookingResult?.bookingId && bookingResult.bookingId === assignedBookingId) {
         console.log('[useBookingFlow] Real-time assignment received:', assignedBookingId);
-        setBookingResult((prev) => (prev ? { ...prev, ...payload } : payload));
+
+        const techObj = payload.engineer || payload.technician;
+        const nameStr = techObj?.name || techObj?.fullName || 'Technician';
+        const resolvedPhone =
+          payload.engineer?.phone ||
+          payload.technician?.phone ||
+          techObj?.phone ||
+          (techObj?.user ? techObj.user.phone : null) ||
+          (payload.technician?.user ? payload.technician.user.phone : null) ||
+          null;
+
+        const mappedEngineer = techObj
+          ? {
+              id: techObj.id,
+              name: nameStr,
+              avatarInitials: nameStr.slice(0, 2).toUpperCase(),
+              avatarColor: '#1565C0',
+              photo: techObj.photo || techObj.profilePhoto || null,
+              profilePhoto: techObj.profilePhoto || techObj.photo || null,
+              phone: resolvedPhone,
+              rating: String(techObj.rating || '4.9'),
+              experience: techObj.experience || '3+ yrs exp',
+              isVerified: true,
+              completedJobs: techObj.completedJobs || 42,
+              distance: techObj.distance || '2.5 km',
+              isTopRated: true,
+            }
+          : null;
+
+        setBookingResult((prev) =>
+          prev
+            ? {
+                ...prev,
+                ...payload,
+                engineer: mappedEngineer || prev.engineer,
+              }
+            : payload,
+        );
         setActiveSheet('assigned');
+        queryClient.invalidateQueries({ queryKey: ['bookings'] });
       }
     };
 
@@ -177,11 +217,76 @@ export function useBookingFlow(): UseBookingFlowReturn {
     return () => {
       socket.off('booking:assigned', onAssigned);
       socket.off('booking:status_changed', onAssigned);
-      if (bookingResult?.bookingId) {
-        socketManager.leaveBooking(bookingResult.bookingId);
+      if (targetBookingId) {
+        socketManager.leaveBooking(targetBookingId);
       }
     };
   }, [bookingResult?.bookingId]);
+
+  // ─── One-time Refetch for Technician Details (No Polling) ─────────────────
+  useEffect(() => {
+    const bookingId = bookingResult?.bookingId;
+    if (!bookingId || activeSheet !== 'assigned') return;
+
+    // If engineer details are already loaded, no extra fetch needed
+    if (bookingResult?.engineer?.phone) return;
+
+    let isMounted = true;
+
+    const fetchDetailsOnAssigned = async () => {
+      try {
+        const res = await apiBookingService.getBookingById(bookingId);
+        if (!isMounted || !res.ok || !res.data) return;
+
+        const booking = res.data;
+        const techObj = (booking as any).technician || (booking as any).engineer;
+        if (techObj) {
+          const techNameStr = techObj.fullName || techObj.name || 'Technician';
+          const fetchedPhone =
+            (booking as any).engineer?.phone ||
+            (booking as any).technician?.phone ||
+            techObj.contact ||
+            techObj.phone ||
+            (techObj.user ? techObj.user.phone : null) ||
+            null;
+
+          const mappedEngineer = {
+            id: techObj.id,
+            name: techNameStr,
+            avatarInitials: techNameStr.slice(0, 2).toUpperCase(),
+            avatarColor: '#1565C0',
+            photo: techObj.profilePhoto || techObj.photo || null,
+            profilePhoto: techObj.profilePhoto || techObj.photo || null,
+            phone: fetchedPhone,
+            rating: String(techObj.rating || '4.9'),
+            experience: techObj.experience || '3+ yrs exp',
+            isVerified: true,
+            completedJobs: techObj.completedJobs || 42,
+            distance: techObj.distance || '2.5 km',
+            isTopRated: true,
+          };
+
+          setBookingResult((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  engineer: mappedEngineer,
+                  otp: booking.otp ?? prev.otp,
+                }
+              : prev,
+          );
+        }
+      } catch {
+        // Silent catch
+      }
+    };
+
+    fetchDetailsOnAssigned();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [bookingResult?.bookingId, activeSheet]);
 
   // ─── Confirm booking — entry point ───────────────────────────────────────
 

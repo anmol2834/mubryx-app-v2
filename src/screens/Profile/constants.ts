@@ -61,6 +61,8 @@ export interface Engineer {
   experience: string;
   isVerified: boolean;
   phone: string;
+  photo?: string | null;
+  profilePhoto?: string | null;
 }
 
 export interface ActiveBooking {
@@ -85,6 +87,8 @@ export interface ActiveBooking {
   stages: TrackStage[];
   otp?: string | null;
   happyCode?: string | null;
+  invoiceNumber?: string | null;
+  invoiceUrl?: string | null;
 }
 
 // ─── Saved Address ────────────────────────────────────────────────────────────

@@ -18,8 +18,8 @@ function EmptyIllustration() {
   return (
     <View style={e.wrap}>
       <Text style={e.emoji}>📋</Text>
-      <Text style={e.title}>No Upcoming Service</Text>
-      <Text style={e.sub}>Your next booking will appear here</Text>
+      <Text style={e.title}>No Active Service</Text>
+      <Text style={e.sub}>Your active booking will appear here</Text>
       <Pressable style={e.cta}>
         <Text style={e.ctaText}>Explore Services →</Text>
       </Pressable>
@@ -61,7 +61,7 @@ export const UpcomingBookingCard = memo(function UpcomingBookingCard({ booking, 
   return (
     <View style={s.container}>
       <View style={s.header}>
-        <Text style={s.sectionTitle}>Upcoming Service</Text>
+        <Text style={s.sectionTitle}>Active Service</Text>
         {booking && (
           <View style={s.liveBadge}>
             <View style={s.liveDot} />
@@ -93,7 +93,7 @@ export const UpcomingBookingCard = memo(function UpcomingBookingCard({ booking, 
           {/* Service name */}
           <Text style={s.serviceName}>{booking.serviceName}</Text>
 
-          {/* Engineer + ETA row */}
+          {/* Engineer row */}
           {booking.engineer && (
             <View style={s.engineerRow}>
               <View style={[s.engAvatar, { backgroundColor: booking.engineer.avatarColor }]}>
@@ -101,17 +101,10 @@ export const UpcomingBookingCard = memo(function UpcomingBookingCard({ booking, 
               </View>
               <View style={s.engInfo}>
                 <Text style={s.engName}>{booking.engineer.name}</Text>
-                <Text style={s.engSub}>Your Engineer · ETA {booking.eta}</Text>
+                <Text style={s.engSub}>Your Engineer</Text>
               </View>
             </View>
           )}
-
-          {/* Meta: date + time */}
-          <View style={s.metaRow}>
-            <Text style={s.metaItem}>📅 {booking.scheduledDate}</Text>
-            <View style={s.metaDot} />
-            <Text style={s.metaItem}>🕐 {booking.scheduledTime}</Text>
-          </View>
 
           {/* Track button */}
           <Pressable style={s.trackBtn} onPress={onTrack}

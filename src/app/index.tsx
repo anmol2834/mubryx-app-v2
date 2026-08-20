@@ -18,7 +18,6 @@ import { HeroCarousel } from '@/components/home/HeroCarousel';
 import { SpecialOffers } from '@/components/home/Offers';
 import { PopularProblems } from '@/components/home/PopularProblems';
 import { QuickServices } from '@/components/home/QuickServices';
-import { SearchBar } from '@/components/home/SearchBar';
 import { LocationMovedBanner } from '@/components/location/LocationMovedBanner';
 import { BottomNavigation, TabName } from '@/components/navigation/BottomNavigation';
 import { Brand } from '@/constants/brand';
@@ -68,18 +67,24 @@ export default function HomeScreen() {
     refetchCart();
   }, [refetchCategories, refetchCart]);
 
+  const [targetTrackBookingId, setTargetTrackBookingId] = useState<string | null>(null);
+
   const handleTabChange = useCallback((tab: TabName) => {
     setActiveTab(tab);
     setNotifVisible(false);
   }, []);
 
-  const handleNavigateToTrack = useCallback(() => {
+  const handleNavigateToTrack = useCallback((bookingId?: string) => {
+    if (bookingId) {
+      setTargetTrackBookingId(bookingId);
+    }
     setActiveTab('track');
     setNotifVisible(false);
   }, []);
 
   const handleTrackBack = useCallback(() => {
-    setActiveTab('profile');
+    setTargetTrackBookingId(null);
+    setActiveTab('home');
   }, []);
 
   const handleBookService = useCallback(() => {
@@ -100,7 +105,7 @@ export default function HomeScreen() {
   }, []);
 
   if (isLoading) {
-    return <View style={{ flex: 1, backgroundColor: Brand.white }} />;
+    return null;
   }
 
   if (!user) {
@@ -138,7 +143,6 @@ export default function HomeScreen() {
               tintColor={Brand.primary}
             />
           }>
-          <SearchBar />
           <HeroCarousel />
           <SectionDivider />
           <QuickServices />
@@ -168,6 +172,7 @@ export default function HomeScreen() {
       <View style={[styles.tabScreen, !trackVisible && styles.hidden]}>
         <TrackScreen
           isActive={trackVisible}
+          targetBookingId={targetTrackBookingId}
           onBack={handleTrackBack}
           onBookService={handleBookService}
         />

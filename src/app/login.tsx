@@ -6,7 +6,11 @@ export default function LoginRoute() {
   const user = useAuthStore(s => s.user);
   const isLoading = useAuthStore(s => s.isLoading);
 
-  if (!isLoading && user) {
+  if (isLoading) {
+    return null;
+  }
+
+  if (user) {
     return <Redirect href="/" />;
   }
 

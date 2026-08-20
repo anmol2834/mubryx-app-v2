@@ -29,11 +29,20 @@ export function CustomerNotificationProvider({ children }: { children: React.Rea
       queryClient.invalidateQueries({ queryKey: ['booking', bookingId] });
       queryClient.invalidateQueries({ queryKey: ['booking'] });
     }
-    queryClient.invalidateQueries({ queryKey: ['customerBookings'] });
+    queryClient.invalidateQueries({ queryKey: ['bookings'] });
     queryClient.invalidateQueries({ queryKey: ['activeBooking'] });
 
+    if (type === 'REVIEW_REQUESTED' && bookingId) {
+      const { useCompulsoryReviewStore } = require('@/store/compulsoryReviewStore');
+      useCompulsoryReviewStore.getState().setPendingReview({
+        bookingId,
+        technicianName: rawData.technicianName || 'Your Technician',
+        serviceTitle: rawData.serviceTitle || 'Service Request',
+      });
+    }
+
     // Route to appropriate screen
-    if (type.includes('BOOKING') || type.includes('TECHNICIAN') || bookingId) {
+    if (type.includes('BOOKING') || type.includes('TECHNICIAN') || type.includes('REVIEW') || bookingId) {
       try {
         router.push('/tracker');
       } catch (err) {
@@ -71,7 +80,7 @@ export function CustomerNotificationProvider({ children }: { children: React.Rea
         if (bookingId) {
           queryClient.invalidateQueries({ queryKey: ['booking', String(bookingId)] });
         }
-        queryClient.invalidateQueries({ queryKey: ['customerBookings'] });
+        queryClient.invalidateQueries({ queryKey: ['bookings'] });
         queryClient.invalidateQueries({ queryKey: ['activeBooking'] });
       },
       onNotificationResponse: (response: any) => {

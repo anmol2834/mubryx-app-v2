@@ -1,9 +1,12 @@
 import { Brand, Radius, Shadow, Spacing, Typography } from '@/constants/brand';
-import { memo, useCallback, useEffect, useRef } from 'react';
+import { formatPrice } from '@/utils/number';
+import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import {
   Alert,
   Animated,
   Dimensions,
+  Image,
+  Linking,
   Modal,
   Platform,
   Pressable,
@@ -15,8 +18,8 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle, Path, Polyline } from 'react-native-svg';
+import { bookingService } from '@/services/bookingService';
 import type { BookingResult } from '../../types';
-import type { TrackStage } from '@/screens/Profile/constants';
 
 const { height: SCREEN_H } = Dimensions.get('window');
 const SHEET_HEIGHT = SCREEN_H * 0.92;
@@ -78,7 +81,6 @@ const OTPCard = memo(function OTPCard({ otp }: { otp: string | undefined }) {
     <View style={otp_s.card}>
       <View style={otp_s.left}>
         <Text style={otp_s.label}>Booking OTP</Text>
-        <Text style={otp_s.hint}>Share with technician on arrival</Text>
       </View>
       <View style={otp_s.digitsRow}>
         {digits.map((d, i) => (
@@ -119,13 +121,27 @@ const otp_s = StyleSheet.create({
 
 const EngineerCard = memo(function EngineerCard({ result }: { result: BookingResult }) {
   const { engineer } = result;
+  const [imageError, setImageError] = useState(false);
   if (!engineer) return null;
+  const photoUri = engineer.photo || (engineer as any).profilePhoto;
+
+  const initials = engineer.avatarInitials || (engineer.name ? engineer.name.slice(0, 2).toUpperCase() : 'T');
+
   return (
     <View style={eng.card}>
       <View style={eng.avatarSection}>
-        <View style={[eng.avatar, { backgroundColor: engineer.avatarColor }]}>
-          <Text style={eng.avatarText}>{engineer.avatarInitials}</Text>
-        </View>
+        {photoUri && !imageError ? (
+          <Image
+            source={{ uri: photoUri }}
+            style={eng.avatarImage}
+            resizeMode="cover"
+            onError={() => setImageError(true)}
+          />
+        ) : (
+          <View style={[eng.avatar, { backgroundColor: engineer.avatarColor || Brand.primary }]}>
+            <Text style={eng.avatarText}>{initials}</Text>
+          </View>
+        )}
         {engineer.isVerified && <VerifiedBadge />}
       </View>
 
@@ -140,19 +156,11 @@ const EngineerCard = memo(function EngineerCard({ result }: { result: BookingRes
         </View>
         <View style={eng.ratingRow}>
           <StarIcon />
-          <Text style={eng.rating}>{engineer.rating}</Text>
+          <Text style={eng.rating}>{engineer.rating || '4.9'}</Text>
           <Text style={eng.dot}>·</Text>
-          <Text style={eng.exp}>{engineer.experience}</Text>
+          <Text style={eng.exp}>{engineer.experience || '3+ yrs exp'}</Text>
           <Text style={eng.dot}>·</Text>
-          <Text style={eng.jobs}>{engineer.completedJobs} jobs</Text>
-        </View>
-        <View style={eng.metaRow}>
-          <View style={eng.metaChip}>
-            <Text style={eng.metaChipText}>📍 {engineer.distance}</Text>
-          </View>
-          <View style={eng.metaChip}>
-            <Text style={eng.metaChipText}>🕐 {result.estimatedArrival}</Text>
-          </View>
+          <Text style={eng.jobs}>{engineer.completedJobs || 42} jobs</Text>
         </View>
       </View>
     </View>
@@ -172,6 +180,14 @@ const eng = StyleSheet.create({
     ...Shadow.card,
   },
   avatarSection: { position: 'relative', flexShrink: 0 },
+  avatarImage: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: Brand.surface,
+    borderWidth: 1,
+    borderColor: Brand.borderLight,
+  },
   avatar: {
     width: 56, height: 56, borderRadius: 28,
     alignItems: 'center', justifyContent: 'center',
@@ -251,67 +267,6 @@ const qa = StyleSheet.create({
   pressed: { opacity: 0.7 },
 });
 
-// ─── Mini Timeline ────────────────────────────────────────────────────────────
-
-const MiniTimeline = memo(function MiniTimeline({ stages }: { stages: TrackStage[] }) {
-  return (
-    <View style={tl.wrap}>
-      <Text style={tl.title}>Booking Progress</Text>
-      {stages.slice(0, 4).map((stage, idx) => {
-        const isDone   = stage.status === 'done';
-        const isActive = stage.status === 'active';
-        return (
-          <View key={stage.id} style={tl.row}>
-            <View style={tl.lineCol}>
-              <View style={[tl.dot, isDone && tl.dotDone, isActive && tl.dotActive]} />
-              {idx < 3 && <View style={[tl.line, isDone && tl.lineDone]} />}
-            </View>
-            <View style={tl.textCol}>
-              <Text style={[tl.stageTitle, isDone && tl.stageTitleDone, isActive && tl.stageTitleActive]}>
-                {stage.title}
-              </Text>
-              {stage.timestamp && (
-                <Text style={tl.timestamp}>{stage.timestamp}</Text>
-              )}
-            </View>
-          </View>
-        );
-      })}
-    </View>
-  );
-});
-
-const tl = StyleSheet.create({
-  wrap: {
-    backgroundColor: Brand.offWhite,
-    borderRadius: Radius.xl,
-    padding: Spacing.base,
-    borderWidth: 1,
-    borderColor: Brand.borderLight,
-    gap: 0,
-  },
-  title: {
-    ...Typography.caption, color: Brand.textMuted,
-    fontWeight: '700' as const, textTransform: 'uppercase',
-    letterSpacing: 0.6, marginBottom: Spacing.md,
-  },
-  row: { flexDirection: 'row', gap: Spacing.md, minHeight: 36 },
-  lineCol: { alignItems: 'center', width: 16 },
-  dot: {
-    width: 12, height: 12, borderRadius: 6,
-    backgroundColor: Brand.border, marginTop: 3,
-  },
-  dotDone: { backgroundColor: Brand.success },
-  dotActive: { backgroundColor: Brand.primary },
-  line: { flex: 1, width: 2, backgroundColor: Brand.borderLight, marginVertical: 2 },
-  lineDone: { backgroundColor: Brand.success + '60' },
-  textCol: { flex: 1, paddingBottom: Spacing.md, gap: 2 },
-  stageTitle: { ...Typography.smallMedium, color: Brand.textMuted },
-  stageTitleDone: { color: Brand.textPrimary, fontWeight: '600' as const },
-  stageTitleActive: { color: Brand.primary, fontWeight: '700' as const },
-  timestamp: { ...Typography.caption, color: Brand.textMuted },
-});
-
 // ─── TechnicianAssignedSheet ──────────────────────────────────────────────────
 
 interface Props {
@@ -343,13 +298,79 @@ export const TechnicianAssignedSheet = memo(function TechnicianAssignedSheet({
     }
   }, [visible]);
 
-  const handleCall = useCallback(() => {
-    Alert.alert('Call Technician', `Calling ${result?.engineer?.name ?? 'technician'}...`);
+  const getPhone = useCallback(async (): Promise<string | null> => {
+    let rawPhone =
+      result?.engineer?.phone ||
+      (result?.engineer as any)?.phoneNumber ||
+      (result as any)?.technician?.contact ||
+      (result as any)?.technician?.phone ||
+      (result as any)?.technician?.user?.phone ||
+      (result as any)?.items?.[0]?.technician?.contact ||
+      (result as any)?.items?.[0]?.technician?.phone;
+
+    if (rawPhone) return String(rawPhone);
+
+    const targetBookingId = result?.bookingId || (result as any)?.id;
+    if (targetBookingId) {
+      try {
+        const res = await bookingService.getBookingById(targetBookingId);
+        if (res.ok && res.data) {
+          const bookingData = res.data as any;
+          const tech = bookingData.technician || bookingData.engineer || bookingData.items?.[0]?.technician;
+          const fetchedPhone =
+            tech?.contact ||
+            tech?.phone ||
+            tech?.user?.phone ||
+            bookingData.engineer?.phone ||
+            bookingData.technician?.contact ||
+            bookingData.technician?.phone;
+          if (fetchedPhone) return String(fetchedPhone);
+        }
+      } catch {
+        // silent fallback
+      }
+    }
+    return null;
   }, [result]);
 
-  const handleChat = useCallback(() => {
-    Alert.alert('Chat', 'In-app chat coming soon.');
-  }, []);
+  const handleCall = useCallback(async () => {
+    const rawPhone = await getPhone();
+    if (!rawPhone) {
+      Alert.alert('Phone Call', 'Technician phone number is not available at the moment.');
+      return;
+    }
+    const cleanPhone = String(rawPhone).replace(/[^\d+]/g, '');
+    const telUrl = `tel:${cleanPhone}`;
+    Linking.openURL(telUrl).catch(() => {
+      Alert.alert('Call Error', `Unable to open dialer for ${cleanPhone}`);
+    });
+  }, [getPhone]);
+
+  const handleChat = useCallback(async () => {
+    const rawPhone = await getPhone();
+    if (!rawPhone) {
+      Alert.alert('WhatsApp Chat', 'Technician phone number is not available for WhatsApp chat.');
+      return;
+    }
+    const cleanDigits = String(rawPhone).replace(/\D/g, '');
+    const formattedPhone = cleanDigits.length === 10 ? `91${cleanDigits}` : cleanDigits;
+    const whatsappUrl = `https://wa.me/${formattedPhone}?text=${encodeURIComponent('Hello, regarding my booking on Mubryx.')}`;
+
+    Linking.canOpenURL(whatsappUrl)
+      .then((supported) => {
+        if (supported) {
+          return Linking.openURL(whatsappUrl);
+        } else {
+          return Linking.openURL(`whatsapp://send?phone=${formattedPhone}&text=${encodeURIComponent('Hello, regarding my booking on Mubryx.')}`);
+        }
+      })
+      .catch(() => {
+        const telUrl = `tel:${cleanDigits}`;
+        Linking.openURL(telUrl).catch(() => {
+          Alert.alert('Contact Error', `Could not reach technician at ${formattedPhone}`);
+        });
+      });
+  }, [getPhone]);
 
   if (!result) return null;
 
@@ -404,9 +425,6 @@ export const TechnicianAssignedSheet = memo(function TechnicianAssignedSheet({
           {/* Quick Actions */}
           {result.engineer && <QuickActions onCall={handleCall} onChat={handleChat} onTrack={onTrack} />}
 
-          {/* Timeline */}
-          <MiniTimeline stages={result.stages} />
-
           {/* Service summary */}
           <View style={s.summaryCard}>
             <View style={s.summaryRow}>
@@ -415,7 +433,7 @@ export const TechnicianAssignedSheet = memo(function TechnicianAssignedSheet({
                 <Text style={s.summaryService}>{result.serviceName}</Text>
                 <Text style={s.summaryMeta}>{result.scheduledDate} · {result.scheduledTime}</Text>
               </View>
-              <Text style={s.summaryPrice}>₹{result.price}</Text>
+              <Text style={s.summaryPrice}>₹{formatPrice(result.price)}</Text>
             </View>
           </View>
         </ScrollView>

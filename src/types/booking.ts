@@ -4,6 +4,7 @@
 export type BookingStatus =
   | 'PENDING_MATCHING'
   | 'TECHNICIAN_SEARCHING'
+  | 'PARTIALLY_ASSIGNED'
   | 'TECHNICIAN_ASSIGNED'
   | 'TECHNICIAN_ACCEPTED'
   | 'TECHNICIAN_ON_THE_WAY'
@@ -74,6 +75,8 @@ export interface Booking {
   technicianId?: string | null;
   otp?: string | null;
   happyCode?: string | null;
+  invoiceNumber?: string | null;
+  invoiceUrl?: string | null;
   cancelledAt?: string | null;
   cancellationReason?: string | null;
   createdAt: string;
@@ -113,6 +116,7 @@ export interface CancelBookingRequest {
 export const BOOKING_STATUS_LABELS: Record<BookingStatus, string> = {
   PENDING_MATCHING: 'Pending',
   TECHNICIAN_SEARCHING: 'Finding Technician',
+  PARTIALLY_ASSIGNED: 'Technician Assigned',
   TECHNICIAN_ASSIGNED: 'Technician Assigned',
   TECHNICIAN_ACCEPTED: 'Technician Accepted',
   TECHNICIAN_ON_THE_WAY: 'On the Way',
@@ -129,6 +133,7 @@ export const BOOKING_STATUS_LABELS: Record<BookingStatus, string> = {
 export const UPCOMING_STATUSES: BookingStatus[] = [
   'PENDING_MATCHING',
   'TECHNICIAN_SEARCHING',
+  'PARTIALLY_ASSIGNED',
   'TECHNICIAN_ASSIGNED',
   'TECHNICIAN_ACCEPTED',
   'TECHNICIAN_ON_THE_WAY',

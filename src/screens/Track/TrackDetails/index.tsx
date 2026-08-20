@@ -6,7 +6,7 @@
 
 import { Brand, Spacing, Typography } from '@/constants/brand';
 import { memo, useCallback } from 'react';
-import { Alert, Pressable, RefreshControl, ScrollView, StatusBar, StyleSheet, Text, View } from 'react-native';
+import { Alert, Linking, Pressable, RefreshControl, ScrollView, StatusBar, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // Re-use every existing TrackService component unchanged
@@ -17,6 +17,7 @@ import { TrackBottomActions } from '../../TrackService/components/TrackActions';
 import { TrackHeader } from '../../TrackService/components/TrackHeader';
 import { TrackTimeline } from '../../TrackService/components/TrackTimeline';
 
+import { bookingService } from '@/services/bookingService';
 import { useTrackDetail } from '../hooks/useTrackDetail';
 import type { ActiveBooking } from '../types';
 
@@ -54,8 +55,8 @@ const DetailError = memo(function DetailError({ onRetry }: { onRetry: () => void
 interface Props {
   bookingId: string;
   /** Booking already in memory (from list) — avoids a redundant service call */
-  prefetchedBooking: ActiveBooking | null;
-  onBack: () => void;
+  prefetchedBooking?: any;
+  onBack?: () => void;
 }
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
@@ -63,7 +64,7 @@ interface Props {
 export const TrackDetails = memo(function TrackDetails({
   bookingId,
   prefetchedBooking,
-  onBack,
+  onBack = () => {},
 }: Props) {
   const insets = useSafeAreaInsets();
   const { booking, isLoading, isRefreshing, hasError, onRefresh, retry } = useTrackDetail(bookingId, prefetchedBooking);
@@ -72,11 +73,57 @@ export const TrackDetails = memo(function TrackDetails({
     Alert.alert('Live Location', 'Live map integration coming soon.');
   }, []);
 
-  const handleCall = useCallback(() => {
-    Alert.alert('Call Engineer', `Calling ${booking?.engineer?.name ?? 'engineer'}...`);
-  }, [booking?.engineer]);
+  const getPhone = useCallback(async (): Promise<string | null> => {
+    let rawPhone =
+      booking?.engineer?.phone ||
+      (booking?.engineer as any)?.phoneNumber ||
+      (booking as any)?.technician?.phone ||
+      (booking as any)?.technician?.user?.phone;
 
-  const handleChat    = useCallback(() => Alert.alert('Chat', 'Chat feature coming soon.'), []);
+    if (rawPhone) return String(rawPhone);
+
+    const targetBookingId = booking?.id || booking?.bookingId || bookingId;
+    if (targetBookingId) {
+      try {
+        const res = await bookingService.getBookingById(targetBookingId);
+        if (res.ok && res.data) {
+          const tech = (res.data as any).technician || (res.data as any).engineer;
+          const fetchedPhone = tech?.phone || tech?.user?.phone;
+          if (fetchedPhone) return String(fetchedPhone);
+        }
+      } catch {
+        // silent fallback
+      }
+    }
+    return null;
+  }, [booking, bookingId]);
+
+  const handleCall = useCallback(async () => {
+    const rawPhone = await getPhone();
+    if (!rawPhone) {
+      Alert.alert('Phone Call', 'Technician phone number is not available at the moment.');
+      return;
+    }
+    const cleanPhone = String(rawPhone).replace(/[^\d+]/g, '');
+    const telUrl = `tel:${cleanPhone}`;
+    Linking.openURL(telUrl).catch(() => {
+      Alert.alert('Call Error', `Unable to open dialer for ${cleanPhone}`);
+    });
+  }, [getPhone]);
+
+  const handleChat = useCallback(async () => {
+    const rawPhone = await getPhone();
+    if (!rawPhone) {
+      Alert.alert('WhatsApp Chat', 'Technician phone number is not available for WhatsApp chat.');
+      return;
+    }
+    const cleanDigits = String(rawPhone).replace(/\D/g, '');
+    const formattedPhone = cleanDigits.length === 10 ? `91${cleanDigits}` : cleanDigits;
+    const whatsappUrl = `https://wa.me/${formattedPhone}?text=${encodeURIComponent('Hello, regarding my booking on Mubryx.')}`;
+    Linking.openURL(whatsappUrl).catch(() => {
+      Alert.alert('WhatsApp Error', 'Could not open WhatsApp on this device.');
+    });
+  }, [getPhone]);
   const handleHelp    = useCallback(() => Alert.alert('Help', 'Support team will contact you shortly.'), []);
   const handleCancel  = useCallback(() => {
     Alert.alert('Cancel Booking', 'Are you sure you want to cancel?', [
@@ -84,7 +131,15 @@ export const TrackDetails = memo(function TrackDetails({
       { text: 'Yes, Cancel', style: 'destructive', onPress: () => {} },
     ]);
   }, []);
-  const handleInvoice   = useCallback(() => Alert.alert('Invoice', 'Downloading invoice...'), []);
+  const handleInvoice   = useCallback(() => {
+    if (booking?.invoiceUrl) {
+      Linking.openURL(booking.invoiceUrl).catch(() =>
+        Alert.alert('Error', 'Could not open invoice URL'),
+      );
+    } else {
+      Alert.alert('Invoice Pending', 'Your tax invoice is being processed and will be available shortly.');
+    }
+  }, [booking?.invoiceUrl]);
   const handleBookAgain = useCallback(() => Alert.alert('Book Again', 'Redirecting to booking...'), []);
   const handleRate      = useCallback(() => Alert.alert('Rate Service', 'Rating screen coming soon.'), []);
 

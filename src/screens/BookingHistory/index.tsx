@@ -1,5 +1,5 @@
 import { Brand, Spacing } from '@/constants/brand';
-import { memo, useCallback, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   RefreshControl,
   ScrollView,
@@ -8,6 +8,8 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useFocusEffect } from 'expo-router';
+import { socketManager } from '@/lib/socket';
 import { BookingFilterBar } from './components/BookingFilterBar';
 import { BookingHeader } from './components/BookingHeader';
 import { BookingTabs, type TabKey } from './components/BookingTabs';
@@ -25,6 +27,7 @@ import {
   type UpcomingBooking,
 } from './mockData';
 
+import { useQueryClient } from '@tanstack/react-query';
 import { useBookingsQuery } from '@/hooks/queries/useBookingsQuery';
 import { mapBookingToCompleted, mapBookingToUpcoming } from './mapper';
 
@@ -90,9 +93,43 @@ export const BookingHistoryScreen = memo(function BookingHistoryScreen() {
 
   const scrollRef = useRef<ScrollView>(null);
 
+  const queryClient = useQueryClient();
+
   // Real backend queries for upcoming and completed bookings
   const upcomingQuery = useBookingsQuery('upcoming');
   const completedQuery = useBookingsQuery('completed');
+
+  const handleRefresh = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ['bookings'] });
+  }, [queryClient]);
+
+  // Refetch data automatically on screen focus
+  useFocusEffect(
+    useCallback(() => {
+      handleRefresh();
+    }, [handleRefresh])
+  );
+
+  // Real-time socket sync for instant status changes & completed tab movement
+  useEffect(() => {
+    const socket = socketManager.connect();
+    if (!socket) return;
+
+    const onStatusUpdate = () => {
+      console.log('[BookingHistory] Socket status update received -> refetching bookings');
+      handleRefresh();
+    };
+
+    socket.on('booking:status_changed', onStatusUpdate);
+    socket.on('booking:review_submitted', onStatusUpdate);
+    socket.on('booking:completed', onStatusUpdate);
+
+    return () => {
+      socket.off('booking:status_changed', onStatusUpdate);
+      socket.off('booking:review_submitted', onStatusUpdate);
+      socket.off('booking:completed', onStatusUpdate);
+    };
+  }, [handleRefresh]);
 
   const isLoading = upcomingQuery.isLoading || completedQuery.isLoading;
   const isError = upcomingQuery.isError || completedQuery.isError;
@@ -104,15 +141,9 @@ export const BookingHistoryScreen = memo(function BookingHistoryScreen() {
     scrollRef.current?.scrollTo({ y: 0, animated: false });
   }, []);
 
-  const handleRefresh = useCallback(() => {
-    upcomingQuery.refetch();
-    completedQuery.refetch();
-  }, [upcomingQuery, completedQuery]);
-
   const handleRetry = useCallback(() => {
-    upcomingQuery.refetch();
-    completedQuery.refetch();
-  }, [upcomingQuery, completedQuery]);
+    handleRefresh();
+  }, [handleRefresh]);
 
   const completedList = useMemo<CompletedBooking[]>(() => {
     const raw = completedQuery.data || [];

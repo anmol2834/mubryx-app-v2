@@ -1,6 +1,6 @@
 import { Brand, Radius, Shadow, Spacing, Typography } from '@/constants/brand';
 import { memo } from 'react';
-import { Alert, Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, Image, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import Svg, { Path, Polyline } from 'react-native-svg';
 import type { CompletedBooking } from '../mockData';
 
@@ -73,7 +73,15 @@ export const CompletedCard = memo(function CompletedCard({ item }: Props) {
           </Pressable>
           <Pressable
             style={s.btnOutline}
-            onPress={() => Alert.alert('Invoice', 'Downloading invoice…')}
+            onPress={() => {
+              if (item.invoiceUrl) {
+                Linking.openURL(item.invoiceUrl).catch(() =>
+                  Alert.alert('Error', 'Could not open invoice URL'),
+                );
+              } else {
+                Alert.alert('Invoice Pending', 'Your tax invoice is being processed and will be available shortly.');
+              }
+            }}
             android_ripple={{ color: Brand.primarySoft }}>
             <Text style={s.btnOutlineText}>Invoice</Text>
           </Pressable>

@@ -5,7 +5,7 @@ import { useCartQuery } from '@/hooks/queries/useCartQuery';
 import { useServicesQuery } from '@/hooks/queries/useServicesQuery';
 import { useCategory } from '@/hooks/useCategory';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { RefreshControl, ScrollView, StatusBar, StyleSheet, View } from 'react-native';
 import { BottomBookingBar } from './components/BottomBookingBar';
 import { ServiceCard } from './components/ServiceCard';
@@ -14,11 +14,18 @@ import { ServiceOverview } from './components/ServiceOverview';
 import { ServiceSelectionHeader } from './components/ServiceSelectionHeader';
 import { TrustIndicators } from './components/TrustIndicators';
 import { ServiceDetailSkeleton } from './components/ServiceDetailSkeleton';
+import { ServiceReviewsModal } from '@/components/review/ServiceReviewsModal';
 
 export default function ServiceDetailScreen() {
   const router = useRouter();
   const { data: cart } = useCartQuery();
   const { addItem, removeItem } = useCartMutations();
+
+  const [selectedServiceForReviews, setSelectedServiceForReviews] = useState<ServiceItem | null>(null);
+
+  const handleViewReviews = useCallback((serviceItem: ServiceItem) => {
+    setSelectedServiceForReviews(serviceItem);
+  }, []);
 
   const params = useLocalSearchParams<{ categoryId?: string; slug?: string }>();
   const categoryId = params.categoryId;
@@ -184,6 +191,7 @@ export default function ServiceDetailScreen() {
                   item={item}
                   selected={selectedIds.has(item.id)}
                   onToggle={handleToggle}
+                  onViewReviews={handleViewReviews}
                   index={index}
                 />
               ))}
@@ -199,6 +207,18 @@ export default function ServiceDetailScreen() {
         totalPrice={totalPrice}
         onContinue={handleContinue}
       />
+
+      {selectedServiceForReviews && (
+        <ServiceReviewsModal
+          visible={Boolean(selectedServiceForReviews)}
+          serviceId={selectedServiceForReviews.id}
+          serviceTitle={selectedServiceForReviews.name}
+          rating={parseFloat(selectedServiceForReviews.rating)}
+          reviewCount={parseInt(selectedServiceForReviews.reviewCount, 10)}
+          service={selectedServiceForReviews}
+          onClose={() => setSelectedServiceForReviews(null)}
+        />
+      )}
     </View>
   );
 }

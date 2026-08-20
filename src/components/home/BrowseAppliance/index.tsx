@@ -2,7 +2,7 @@ import { Brand, Radius, Shadow, Spacing, Typography } from '@/constants/brand';
 import { useCategoriesQuery } from '@/hooks/queries/useCategoriesQuery';
 import { getCategoryAssetSource } from '@/utils/categoryImages';
 import { useRouter } from 'expo-router';
-import { memo, useCallback, useMemo } from 'react';
+import { memo, useCallback, useMemo, useRef, useEffect, useState } from 'react';
 import { Dimensions, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { BrowseApplianceSkeleton } from '../Skeletons/HomeServiceSkeleton';
 
@@ -30,7 +30,8 @@ const ApplianceCard = memo(function ApplianceCard({
         <Pressable
           style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
           onPress={handlePress}
-          android_ripple={null}
+          unstable_pressDelay={0}
+          android_ripple={{ color: 'rgba(0, 82, 204, 0.08)', foreground: true }}
           accessibilityLabel={`${item.name} service`}>
           <View style={[styles.imageArea, { backgroundColor: item.bgColor }]}>
             <Image source={imageSource} style={styles.image} resizeMode="cover" />
@@ -47,12 +48,11 @@ const ApplianceCard = memo(function ApplianceCard({
   );
 });
 
-import { useEffect, useState } from 'react';
-
 export const BrowseAppliance = memo(function BrowseAppliance() {
   const router = useRouter();
   const { data: apiCategories = [], isLoading: isQueryLoading } = useCategoriesQuery();
   const [isTimerLoading, setIsTimerLoading] = useState(true);
+  const isNavigatingRef = useRef(false);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -80,7 +80,15 @@ export const BrowseAppliance = memo(function BrowseAppliance() {
   }, [apiCategories]);
 
   const handleCardPress = useCallback((item: any) => {
-    router.push({ pathname: '/service-detail', params: { categoryId: item.id, slug: item.slug } });
+    if (isNavigatingRef.current) return;
+    isNavigatingRef.current = true;
+
+    requestAnimationFrame(() => {
+      router.push({ pathname: '/service-detail', params: { categoryId: item.id, slug: item.slug } });
+      setTimeout(() => {
+        isNavigatingRef.current = false;
+      }, 500);
+    });
   }, [router]);
 
   if (isLoading) {
