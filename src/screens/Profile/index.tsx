@@ -50,11 +50,11 @@ export const ProfileScreen = memo(function ProfileScreen({ onNavigateToTrack }: 
     } else if (id === 'call') {
       Linking.openURL('tel:+919875134775');
     } else if (id === 'terms') {
-      Linking.openURL('https://mubryx-kv2x.vercel.app/terms-and-conditions');
+      Linking.openURL('https://www.mubryx.com/terms-and-conditions');
     } else if (id === 'privacy') {
-      Linking.openURL('https://mubryx-kv2x.vercel.app/privacy-policy');
+      Linking.openURL('https://www.mubryx.com/privacy-policy');
     } else if (id === 'refund') {
-      Linking.openURL('https://mubryx-kv2x.vercel.app/privacy-policy');
+      Linking.openURL('https://www.mubryx.com/refund-policy');
     } else {
       profile.onSettingsRowPress(id);
     }
