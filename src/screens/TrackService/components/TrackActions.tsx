@@ -67,25 +67,18 @@ export const TrackBottomActions = memo(function TrackBottomActions({
   return (
     <View style={s.bottomContainer}>
       {isCompleted ? (
-        <>
-          <Pressable style={s.primaryBtn} onPress={onRate}
-            android_ripple={{ color: Brand.primaryDark, borderless: false }}>
-            <StarIcon />
-            <Text style={s.primaryBtnText}>Rate Your Experience</Text>
+        <View style={s.rowBtns}>
+          <Pressable style={[s.secondaryBtn, s.flex1]} onPress={onInvoice}
+            android_ripple={{ color: Brand.primarySoft, borderless: false }}>
+            <InvoiceIcon />
+            <Text style={s.secondaryBtnText}>Invoice</Text>
           </Pressable>
-          <View style={s.rowBtns}>
-            <Pressable style={[s.secondaryBtn, s.flex1]} onPress={onInvoice}
-              android_ripple={{ color: Brand.primarySoft, borderless: false }}>
-              <InvoiceIcon />
-              <Text style={s.secondaryBtnText}>Invoice</Text>
-            </Pressable>
-            <Pressable style={[s.secondaryBtn, s.flex1]} onPress={onBookAgain}
-              android_ripple={{ color: Brand.primarySoft, borderless: false }}>
-              <RepeatIcon />
-              <Text style={s.secondaryBtnText}>Book Again</Text>
-            </Pressable>
-          </View>
-        </>
+          <Pressable style={[s.secondaryBtn, s.flex1]} onPress={onBookAgain}
+            android_ripple={{ color: Brand.primarySoft, borderless: false }}>
+            <RepeatIcon />
+            <Text style={s.secondaryBtnText}>Book Again</Text>
+          </Pressable>
+        </View>
       ) : (
         <>
           <Pressable style={s.helpBtn} onPress={onHelp}

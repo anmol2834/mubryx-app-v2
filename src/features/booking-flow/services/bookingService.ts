@@ -68,14 +68,14 @@ export async function createBooking(
     otp: booking.otp ?? '0000',
     status: 'assigned',
     engineer: null,
-    estimatedArrival: 'Pending Assignment',
+    estimatedArrival: '~15 min',
     stages: [],
 
     serviceName,
     serviceIcon: '🔧',
     scheduledDate,
     scheduledTime,
-    price: booking.pricing.total,
+    price: Math.round((booking.pricing?.total || 0) * 100) / 100,
     paymentMethod: booking.paymentMethod,
     address: booking.serviceAddress.completeAddress,
   };

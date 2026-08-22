@@ -33,9 +33,12 @@ function StarIcon() {
 }
 const ProblemCard = memo(function ProblemCard({
   item,
+  onPress,
 }: {
   item: any;
+  onPress: (item: any) => void;
 }) {
+  const handlePress = useCallback(() => onPress(item), [item, onPress]);
   return (
     // Outer: border + shadow, no overflow so shadow isn't clipped
     <View style={styles.cardWrap}>
@@ -43,7 +46,9 @@ const ProblemCard = memo(function ProblemCard({
       <View style={styles.cardClip}>
         <Pressable
           style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
-          android_ripple={null}
+          onPress={handlePress}
+          unstable_pressDelay={0}
+          android_ripple={{ color: 'rgba(0, 82, 204, 0.08)', foreground: true }}
           accessibilityLabel={item.title}>
           <View style={styles.topRow}>
             <View style={[styles.iconWrap, { backgroundColor: item.iconBg }]}>
@@ -68,7 +73,9 @@ const ProblemCard = memo(function ProblemCard({
               <View style={styles.bookBtnClip}>
                 <Pressable
                   style={({ pressed }) => [styles.bookBtn, pressed && styles.bookBtnPressed]}
-                  android_ripple={null}
+                  onPress={handlePress}
+                  unstable_pressDelay={0}
+                  android_ripple={{ color: 'rgba(255, 255, 255, 0.2)', foreground: true }}
                   accessibilityLabel={`Book ${item.title}`}>
                   <Text style={styles.bookText}>Book Now</Text>
                 </Pressable>
@@ -80,13 +87,17 @@ const ProblemCard = memo(function ProblemCard({
     </View>
   );
 });
-import { useEffect, useState } from 'react';
+
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useRouter } from 'expo-router';
 import { useServicesQuery } from '@/hooks/queries/useServicesQuery';
 import { PopularProblemsSkeleton } from '../Skeletons/HomeServiceSkeleton';
 
 export const PopularProblems = memo(function PopularProblems() {
+  const router = useRouter();
   const { data: popularServices = [], isLoading: isQueryLoading } = useServicesQuery({ isPopular: true });
   const [isTimerLoading, setIsTimerLoading] = useState(true);
+  const isNavigatingRef = useRef(false);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -94,6 +105,19 @@ export const PopularProblems = memo(function PopularProblems() {
     }, 2200);
     return () => clearTimeout(timer);
   }, []);
+
+  const handleCardPress = useCallback((item: any) => {
+    if (isNavigatingRef.current) return;
+    isNavigatingRef.current = true;
+
+    requestAnimationFrame(() => {
+      const categoryId = item.categoryId || item.id;
+      router.push({ pathname: '/service-detail', params: { categoryId, slug: item.slug || 'service' } });
+      setTimeout(() => {
+        isNavigatingRef.current = false;
+      }, 500);
+    });
+  }, [router]);
 
   const isLoading = isQueryLoading || isTimerLoading;
 
@@ -127,7 +151,7 @@ export const PopularProblems = memo(function PopularProblems() {
         disableIntervalMomentum
       >
         {popularServices.map((item) => (
-          <ProblemCard key={item.id} item={item} />
+          <ProblemCard key={item.id} item={item} onPress={handleCardPress} />
         ))}
       </ScrollView>
     </View>

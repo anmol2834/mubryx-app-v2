@@ -1,6 +1,6 @@
 import { Brand, Radius, Shadow, Spacing, Typography } from '@/constants/brand';
-import { memo } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { memo, useState } from 'react';
+import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import Svg, { Circle, Path, Polyline } from 'react-native-svg';
 import type { Engineer } from '../../Profile/constants';
 
@@ -48,6 +48,9 @@ interface Props {
 }
 
 export const EngineerCard = memo(function EngineerCard({ engineer, onCall, onChat }: Props) {
+  const [imageError, setImageError] = useState(false);
+  const photoUri = engineer.photo || (engineer as any).profilePhoto;
+
   return (
     <View style={s.container}>
       <Text style={s.sectionTitle}>Your Engineer</Text>
@@ -55,9 +58,18 @@ export const EngineerCard = memo(function EngineerCard({ engineer, onCall, onCha
         {/* Left: avatar + info */}
         <View style={s.left}>
           <View style={s.avatarWrap}>
-            <View style={[s.avatar, { backgroundColor: engineer.avatarColor }]}>
-              <Text style={s.avatarText}>{engineer.avatarInitials}</Text>
-            </View>
+            {photoUri && !imageError ? (
+              <Image
+                source={{ uri: photoUri }}
+                style={s.avatarImage}
+                resizeMode="cover"
+                onError={() => setImageError(true)}
+              />
+            ) : (
+              <View style={[s.avatar, { backgroundColor: engineer.avatarColor || Brand.primary }]}>
+                <Text style={s.avatarText}>{engineer.avatarInitials || 'T'}</Text>
+              </View>
+            )}
             {engineer.isVerified && <VerifiedBadge />}
           </View>
           <View style={s.info}>
@@ -117,6 +129,14 @@ const s = StyleSheet.create({
     flex: 1,
   },
   avatarWrap: { position: 'relative' },
+  avatarImage: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: Brand.surface,
+    borderWidth: 1,
+    borderColor: Brand.borderLight,
+  },
   avatar: {
     width: 52,
     height: 52,

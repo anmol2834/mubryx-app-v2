@@ -15,6 +15,8 @@ export interface CompletedBooking {
   amountRaw: number;
   image: ImageSourcePropType;
   timestamp: number;
+  invoiceNumber?: string | null;
+  invoiceUrl?: string | null;
 }
 
 export interface UpcomingBooking {
@@ -31,6 +33,8 @@ export interface UpcomingBooking {
   status: BookingStatus;
   image: ImageSourcePropType;
   timestamp: number;
+  invoiceNumber?: string | null;
+  invoiceUrl?: string | null;
 }
 
 export const STATUS_CONFIG: Record<BookingStatus, { color: string; bg: string }> = {

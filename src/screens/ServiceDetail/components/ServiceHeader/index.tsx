@@ -1,4 +1,4 @@
-import { Brand, Radius, Spacing, Typography } from '@/constants/brand';
+import { Brand, Radius, Spacing } from '@/constants/brand';
 import { useCartItemCount } from '@/hooks/queries/useCartQuery';
 import { useRouter } from 'expo-router';
 import { memo, useCallback } from 'react';
@@ -6,36 +6,45 @@ import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Line, Path } from 'react-native-svg';
 
-function CartIcon() {
+function BackArrowIcon() {
   return (
     <Svg width={22} height={22} viewBox="0 0 24 24" fill="none">
       <Path
-        d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"
-        stroke={Brand.textPrimary} strokeWidth={1.8}
-        strokeLinecap="round" strokeLinejoin="round"
-      />
-      <Line x1="3" y1="6" x2="21" y2="6"
-        stroke={Brand.textPrimary} strokeWidth={1.8} strokeLinecap="round"
-      />
-      <Path d="M16 10a4 4 0 0 1-8 0"
-        stroke={Brand.textPrimary} strokeWidth={1.8}
-        strokeLinecap="round" strokeLinejoin="round"
+        d="M19 12H5M12 19l-7-7 7-7"
+        stroke={Brand.textPrimary}
+        strokeWidth={2}
+        strokeLinecap="round"
+        strokeLinejoin="round"
       />
     </Svg>
   );
 }
 
-function MenuIcon() {
+function CartIcon() {
   return (
     <Svg width={22} height={22} viewBox="0 0 24 24" fill="none">
-      <Line x1="3" y1="6" x2="21" y2="6"
-        stroke={Brand.textPrimary} strokeWidth={2} strokeLinecap="round"
+      <Path
+        d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"
+        stroke={Brand.textPrimary}
+        strokeWidth={1.8}
+        strokeLinecap="round"
+        strokeLinejoin="round"
       />
-      <Line x1="3" y1="12" x2="21" y2="12"
-        stroke={Brand.textPrimary} strokeWidth={2} strokeLinecap="round"
+      <Line
+        x1="3"
+        y1="6"
+        x2="21"
+        y2="6"
+        stroke={Brand.textPrimary}
+        strokeWidth={1.8}
+        strokeLinecap="round"
       />
-      <Line x1="3" y1="18" x2="21" y2="18"
-        stroke={Brand.textPrimary} strokeWidth={2} strokeLinecap="round"
+      <Path
+        d="M16 10a4 4 0 0 1-8 0"
+        stroke={Brand.textPrimary}
+        strokeWidth={1.8}
+        strokeLinecap="round"
+        strokeLinejoin="round"
       />
     </Svg>
   );
@@ -59,12 +68,17 @@ export const ServiceHeader = memo(function ServiceHeader({
 
   return (
     <View style={[styles.container, { paddingTop: insets.top + 8 }]}>
-      {/* Brand name acts as back button */}
-      <Pressable onPress={onBack} style={styles.brandWrap} accessibilityLabel="Go back">
-        <View style={styles.brandBox}>
-          <Text style={styles.brandText}>Mubryx</Text>
-        </View>
-      </Pressable>
+      {/* Back Button */}
+      <View style={styles.iconBtnWrap}>
+        <Pressable
+          style={styles.iconBtn}
+          onPress={onBack}
+          unstable_pressDelay={0}
+          accessibilityLabel="Go back"
+          android_ripple={{ color: Brand.primarySoft, borderless: false }}>
+          <BackArrowIcon />
+        </Pressable>
+      </View>
 
       <View style={styles.actions}>
         {/* Cart — shows real item count, navigates instantly */}
@@ -72,6 +86,7 @@ export const ServiceHeader = memo(function ServiceHeader({
           <Pressable
             style={styles.iconBtn}
             onPress={handleCartPress}
+            unstable_pressDelay={0}
             accessibilityLabel={`Cart${itemCount > 0 ? `, ${itemCount} items` : ''}`}
             android_ripple={{ color: Brand.primarySoft, borderless: false }}>
             <CartIcon />
@@ -80,14 +95,6 @@ export const ServiceHeader = memo(function ServiceHeader({
                 <Text style={styles.badgeText}>{itemCount > 9 ? '9+' : itemCount}</Text>
               </View>
             )}
-          </Pressable>
-        </View>
-        <View style={styles.iconBtnWrap}>
-          <Pressable
-            style={styles.iconBtn}
-            accessibilityLabel="Menu"
-            android_ripple={{ color: Brand.primarySoft, borderless: false }}>
-            <MenuIcon />
           </Pressable>
         </View>
       </View>
@@ -114,24 +121,6 @@ const styles = StyleSheet.create({
       },
       android: { elevation: 2 },
     }),
-  },
-  brandWrap: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  brandBox: {
-    paddingHorizontal: Spacing.md,
-    paddingVertical: 6,
-    borderRadius: Radius.sm,
-    borderWidth: 1,
-    borderColor: Brand.border,
-    backgroundColor: Brand.white,
-  },
-  brandText: {
-    ...Typography.smallMedium,
-    color: Brand.textPrimary,
-    fontWeight: '700',
-    letterSpacing: -0.3,
   },
   actions: {
     flexDirection: 'row',

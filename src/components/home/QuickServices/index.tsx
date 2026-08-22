@@ -1,13 +1,10 @@
 import { Brand, Radius, Shadow, Spacing, Typography } from '@/constants/brand';
 import { useCategoriesQuery } from '@/hooks/queries/useCategoriesQuery';
 import { useRouter } from 'expo-router';
-import { memo, useCallback, useMemo } from 'react';
-import { Dimensions, Pressable, StyleSheet, Text, View } from 'react-native';
-import Svg, { Circle, Path, Polyline, Rect, SvgXml } from 'react-native-svg';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { SvgXml } from 'react-native-svg';
 import { QuickServicesSkeleton } from '../Skeletons/HomeServiceSkeleton';
-
-const { width: SCREEN_W } = Dimensions.get('window');
-const CARD_W = (SCREEN_W - Spacing.screen * 2 - Spacing.md * 2) / 3;
 
 const ServiceCard = memo(function ServiceCard({
   item,
@@ -19,28 +16,26 @@ const ServiceCard = memo(function ServiceCard({
   const handlePress = useCallback(() => onPress(item), [item, onPress]);
   return (
     <View style={styles.cardWrap}>
-      <View style={styles.cardClip}>
-        <Pressable
-          style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
-          onPress={handlePress}
-          android_ripple={null}
-          accessibilityLabel={item.title}>
-          <View style={[styles.iconContainer, { backgroundColor: item.iconBg }]}>
-            <SvgXml xml={item.svgType} width="24" height="24" color={item.iconColor} />
-          </View>
-          <Text style={styles.title} numberOfLines={2}>{item.title}</Text>
-        </Pressable>
-      </View>
+      <Pressable
+        style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
+        onPress={handlePress}
+        unstable_pressDelay={0}
+        android_ripple={{ color: 'rgba(0, 82, 204, 0.08)', foreground: true }}
+        accessibilityLabel={item.title}>
+        <View style={[styles.iconContainer, { backgroundColor: item.iconBg }]}>
+          <SvgXml xml={item.svgType} width="24" height="24" color={item.iconColor} />
+        </View>
+        <Text style={styles.title} numberOfLines={2}>{item.title}</Text>
+      </Pressable>
     </View>
   );
 });
-
-import { useEffect, useState } from 'react';
 
 export const QuickServices = memo(function QuickServices() {
   const router = useRouter();
   const { data: apiCategories = [], isLoading: isQueryLoading } = useCategoriesQuery();
   const [isTimerLoading, setIsTimerLoading] = useState(true);
+  const isNavigatingRef = useRef(false);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -67,20 +62,30 @@ export const QuickServices = memo(function QuickServices() {
       }));
   }, [apiCategories]);
 
-  const handleCardPress = useCallback((item: any) => {
-    router.push({ pathname: '/service-detail', params: { categoryId: item.id, slug: item.slug } });
-  }, [router]);
+  const serviceRows = useMemo(() => {
+    const rows = [];
+    for (let i = 0; i < displayServices.length; i += 3) {
+      rows.push(displayServices.slice(i, i + 3));
+    }
+    return rows;
+  }, [displayServices]);
 
-  const renderItem = useCallback(
-    ({ item }: { item: any }) => (
-      <ServiceCard item={item} onPress={handleCardPress} />
-    ),
-    [handleCardPress]
-  );
+  const handleCardPress = useCallback((item: any) => {
+    if (isNavigatingRef.current) return;
+    isNavigatingRef.current = true;
+
+    requestAnimationFrame(() => {
+      router.push({ pathname: '/service-detail', params: { categoryId: item.id, slug: item.slug } });
+      setTimeout(() => {
+        isNavigatingRef.current = false;
+      }, 500);
+    });
+  }, [router]);
 
   if (isLoading) {
     return <QuickServicesSkeleton />;
   }
+
   return (
     <View style={styles.wrapper}>
       <View style={styles.header}>
@@ -95,13 +100,22 @@ export const QuickServices = memo(function QuickServices() {
         </View>
       </View>
       <View style={styles.grid}>
-        {displayServices.map((item) => (
-          <ServiceCard key={item.id} item={item} onPress={handleCardPress} />
+        {serviceRows.map((row, rowIndex) => (
+          <View key={rowIndex} style={styles.row}>
+            {row.map((item) => (
+              <ServiceCard key={item.id} item={item} onPress={handleCardPress} />
+            ))}
+            {row.length < 3 &&
+              Array.from({ length: 3 - row.length }).map((_, idx) => (
+                <View key={`empty-${idx}`} style={styles.emptyCardSlot} />
+              ))}
+          </View>
         ))}
       </View>
     </View>
   );
 });
+
 const styles = StyleSheet.create({
   wrapper: {
     paddingHorizontal: Spacing.screen,
@@ -137,36 +151,40 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   grid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
     gap: Spacing.md,
     paddingBottom: Spacing.md,
   },
+  row: {
+    flexDirection: 'row',
+    gap: Spacing.md,
+  },
   cardWrap: {
-    width: CARD_W,
+    flex: 1,
     borderRadius: Radius.lg,
     backgroundColor: Brand.white,
     borderWidth: 1,
     borderColor: Brand.borderLight,
+    overflow: 'hidden',
     ...Shadow.card,
   },
-  cardClip: {
-    borderRadius: Radius.lg,
-    overflow: 'hidden',
+  emptyCardSlot: {
+    flex: 1,
   },
   card: {
+    flex: 1,
     backgroundColor: Brand.white,
     paddingVertical: Spacing.md,
-    paddingHorizontal: Spacing.sm,
+    paddingHorizontal: Spacing.xs,
     alignItems: 'center',
+    justifyContent: 'center',
     gap: Spacing.sm,
   },
   cardPressed: {
-    opacity: 0.6,
+    opacity: 0.7,
   },
   iconContainer: {
-    width: 52,
-    height: 52,
+    width: 48,
+    height: 48,
     borderRadius: Radius.md,
     alignItems: 'center',
     justifyContent: 'center',

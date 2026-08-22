@@ -3,6 +3,8 @@ import { useAddressesQuery } from '@/hooks/queries/useAddressesQuery';
 import { useAddressMutations } from '@/hooks/mutations/useAddressMutations';
 import { useBookingsQuery } from '@/hooks/queries/useBookingsQuery';
 import { useCallback, useMemo, useState } from 'react';
+import { mapApiBookingToActiveBooking } from '../../Track/services/trackingService';
+import { isLiveBooking, sortBookingsByProgress } from '../../Track/utils';
 import type {
   ActiveBooking,
   BookingRecord,
@@ -46,7 +48,7 @@ export interface ProfileActions {
   onUpdateName: (name: string) => void;
 }
 
-export function useProfile(onNavigateToTrack?: () => void): ProfileState & ProfileActions {
+export function useProfile(onNavigateToTrack?: (bookingId?: string) => void): ProfileState & ProfileActions {
   const [logoutSheetVisible, setLogoutSheetVisible] = useState(false);
   const [biometricEnabled, setBiometricEnabled] = useState(true);
   const [editingAddressId, setEditingAddressId] = useState<string | null>(null);
@@ -119,14 +121,6 @@ export function useProfile(onNavigateToTrack?: () => void): ProfileState & Profi
 
   const onBookingPress = useCallback((_b: BookingRecord) => {}, []);
 
-  const onTrackService = useCallback(() => {
-    onNavigateToTrack?.();
-  }, [onNavigateToTrack]);
-
-  const onQuickAction = useCallback((id: string) => {
-    if (id === 'qa2') onNavigateToTrack?.();
-  }, [onNavigateToTrack]);
-
   const authUser = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
 
@@ -170,53 +164,20 @@ export function useProfile(onNavigateToTrack?: () => void): ProfileState & Profi
 
   const activeBooking: ActiveBooking | null = useMemo(() => {
     const rawList = upcomingQuery.data;
-    if (!rawList || rawList.length === 0) return null;
-    const b = rawList[0];
-    const firstItem = (b as any).items?.[0] || (b as any).service || {};
-    const title = firstItem.serviceTitle || firstItem.title || 'Service';
-    return {
-      id: (b as any)._id || (b as any).id,
-      bookingId: (b as any)._id || (b as any).id,
-      serviceName: title,
-      serviceIcon: '🔧',
-      applianceName: title,
-      currentStage: (b as any).status === 'IN_PROGRESS' ? 'started' : 'confirmed',
-      eta: '30 mins',
-      scheduledDate: (b as any).scheduledDate || 'Scheduled',
-      scheduledTime: (b as any).scheduledSlot || 'Slot',
-      price:
-        (b as any).pricing?.total ??
-        (b as any).totalAmount ??
-        (b as any).amount ??
-        (firstItem.lineTotal || firstItem.unitPrice || 0),
-      paymentMethod: (b as any).paymentMethod || 'Online',
-      warranty: '30 Days Warranty',
-      estimatedDuration: '45 mins',
-      engineer: (b as any).technician ? {
-        id: (b as any).technician._id || (b as any).technician.id || 'tech1',
-        name: (b as any).technician.name || 'Technician',
-        avatarInitials: ((b as any).technician.name || 'Tech').slice(0, 2).toUpperCase(),
-        avatarColor: '#1565C0',
-        rating: String((b as any).technician.rating || 4.9),
-        experience: '5+ Yrs',
-        isVerified: true,
-        phone: (b as any).technician.phone || '',
-      } : null,
-      address: (b as any).address?.completeAddress || (b as any).address?.address || 'Service Location',
-      landmark: (b as any).address?.landmark || '',
-      contactPerson: (b as any).address?.contactPerson || 'Customer',
-      contactPhone: (b as any).address?.contactPhone || '',
-      stages: [
-        { id: 'confirmed', title: 'Confirmed', description: 'Booking confirmed', timestamp: '', status: 'done' },
-        { id: 'assigned', title: 'Assigned', description: 'Technician assigned', timestamp: '', status: 'done' },
-        { id: 'journey', title: 'On the Way', description: 'Heading to location', timestamp: '', status: 'pending' },
-        { id: 'nearby', title: 'Nearby', description: 'Near location', timestamp: '', status: 'pending' },
-        { id: 'arrived', title: 'Arrived', description: 'Technician arrived', timestamp: '', status: 'pending' },
-        { id: 'started', title: 'Started', description: 'Service started', timestamp: '', status: 'pending' },
-        { id: 'completed', title: 'Completed', description: 'Service completed', timestamp: '', status: 'pending' },
-      ],
-    };
+    if (!rawList || !Array.isArray(rawList) || rawList.length === 0) return null;
+    const mapped = rawList.map(mapApiBookingToActiveBooking).filter(isLiveBooking);
+    if (mapped.length === 0) return null;
+    const sorted = sortBookingsByProgress(mapped);
+    return sorted[0] || null;
   }, [upcomingQuery.data]);
+
+  const onTrackService = useCallback(() => {
+    onNavigateToTrack?.(activeBooking?.id || activeBooking?.bookingId);
+  }, [onNavigateToTrack, activeBooking]);
+
+  const onQuickAction = useCallback((id: string) => {
+    if (id === 'qa2') onNavigateToTrack?.(activeBooking?.id || activeBooking?.bookingId);
+  }, [onNavigateToTrack, activeBooking]);
 
   return useMemo(() => ({
     user: resolvedUser,

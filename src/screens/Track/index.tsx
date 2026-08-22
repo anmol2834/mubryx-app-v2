@@ -19,6 +19,7 @@ import type { ActiveBooking } from './types';
 
 interface Props {
   isActive: boolean;
+  targetBookingId?: string | null;
   /** Called when back is pressed from single-booking detail view (returns to prev tab) */
   onBack: () => void;
   /** Called when user taps "Book a Service" in empty state */
@@ -27,10 +28,11 @@ interface Props {
 
 export const TrackScreen = memo(function TrackScreen({
   isActive,
+  targetBookingId,
   onBack,
   onBookService,
 }: Props) {
-  const { view, bookings, isRefreshing, onRefresh, openDetail, backFromDetail } = useTrackRouter(isActive);
+  const { view, bookings, isRefreshing, onRefresh, openDetail, backFromDetail } = useTrackRouter(isActive, targetBookingId);
 
   // Find the prefetched booking from the in-memory list to avoid a redundant
   // service call when navigating from list → detail.
@@ -43,7 +45,7 @@ export const TrackScreen = memo(function TrackScreen({
   //   - came from list → go back to list
   //   - direct (single booking) → go back to previous tab
   const handleDetailBack = useCallback(() => {
-    if (bookings.length >= 2) {
+    if (bookings.length > 1) {
       backFromDetail();
     } else {
       onBack();

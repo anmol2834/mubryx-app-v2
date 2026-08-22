@@ -129,6 +129,7 @@ interface ServiceCardProps {
   item: ServiceItem;
   selected: boolean;
   onToggle: (id: string) => void;
+  onViewReviews?: (item: ServiceItem) => void;
   index: number;
 }
 
@@ -136,8 +137,10 @@ export const ServiceCard = memo(function ServiceCard({
   item,
   selected,
   onToggle,
+  onViewReviews,
 }: ServiceCardProps) {
   const handleToggle = useCallback(() => onToggle(item.id), [item.id, onToggle]);
+  const handleViewReviews = useCallback(() => onViewReviews?.(item), [item, onViewReviews]);
 
   const discountPct = item.originalPrice
     ? Math.round((1 - item.price / item.originalPrice) * 100)
@@ -166,29 +169,25 @@ export const ServiceCard = memo(function ServiceCard({
           <View style={styles.body}>
             <View style={styles.row1}>
               <Text style={styles.name} numberOfLines={1}>{item.name}</Text>
-              <View style={styles.durationTag}>
-                <ClockIcon />
-                <Text style={styles.durationText}>{item.duration}</Text>
-              </View>
             </View>
 
             <Text style={styles.desc} numberOfLines={1}>{item.description}</Text>
 
-            <View style={styles.ratingRow}>
+            <Pressable style={styles.ratingRow} onPress={handleViewReviews} hitSlop={6}>
               <StarRow rating={item.rating} />
               <Text style={styles.ratingNum}>{item.rating}</Text>
               <Text style={styles.reviewCnt}>({item.reviewCount})</Text>
-            </View>
+            </Pressable>
 
             <View style={styles.highlightRow}>
               <Text style={styles.highlightTick}>{'✓ '}</Text>
               <Text style={styles.highlightText}>{item.successHighlight}</Text>
             </View>
 
-            <View style={styles.viewDetailsRow}>
-              <Text style={styles.viewDetails}>View Details</Text>
+            <Pressable style={styles.viewDetailsRow} onPress={handleViewReviews} hitSlop={6}>
+              <Text style={styles.viewDetails}>View Details & Reviews</Text>
               <ChevronRight />
-            </View>
+            </Pressable>
           </View>
 
           {/* Right: price + checkbox */}

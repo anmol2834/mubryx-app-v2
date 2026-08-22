@@ -81,7 +81,7 @@ export function useTrackDetail(
         console.log('[useTrackDetail] Real-time status update received for booking:', targetId, payload);
         load();
         queryClient.invalidateQueries({ queryKey: ['booking', bookingId] });
-        queryClient.invalidateQueries({ queryKey: ['customerBookings'] });
+        queryClient.invalidateQueries({ queryKey: ['bookings'] });
       }
     };
 
@@ -101,11 +101,19 @@ export function useTrackDetail(
 
     socket.on('booking:status_changed', onStatusUpdate);
     socket.on('booking:assigned', onStatusUpdate);
+    socket.on('booking:review_requested', onStatusUpdate);
+    socket.on('booking:happy_code_generated', onStatusUpdate);
+    socket.on('booking:review_submitted', onStatusUpdate);
+    socket.on('booking:completed', onStatusUpdate);
     socket.on('technician:location_updated', onLocationUpdate);
 
     return () => {
       socket.off('booking:status_changed', onStatusUpdate);
       socket.off('booking:assigned', onStatusUpdate);
+      socket.off('booking:review_requested', onStatusUpdate);
+      socket.off('booking:happy_code_generated', onStatusUpdate);
+      socket.off('booking:review_submitted', onStatusUpdate);
+      socket.off('booking:completed', onStatusUpdate);
       socket.off('technician:location_updated', onLocationUpdate);
       socketManager.leaveBooking(bookingId);
     };

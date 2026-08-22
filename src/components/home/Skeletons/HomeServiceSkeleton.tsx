@@ -4,7 +4,6 @@ import { Dimensions, ScrollView, StyleSheet, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
 
 const { width: SCREEN_W } = Dimensions.get('window');
-const CARD_W = (SCREEN_W - Spacing.screen * 2 - Spacing.md * 2) / 3;
 const PROBLEM_CARD_W = SCREEN_W * 0.72;
 
 const SkeletonBlock = memo(function SkeletonBlock({
@@ -49,6 +48,12 @@ const SkeletonBlock = memo(function SkeletonBlock({
 });
 
 export const QuickServicesSkeleton = memo(function QuickServicesSkeleton() {
+  const skeletonRows = [
+    [0, 1, 2],
+    [3, 4, 5],
+    [6, 7, 8],
+  ];
+
   return (
     <View style={s.wrapper}>
       {/* Header skeleton */}
@@ -57,14 +62,18 @@ export const QuickServicesSkeleton = memo(function QuickServicesSkeleton() {
         <SkeletonBlock width={60} height={16} borderRadius={Radius.sm} />
       </View>
 
-      {/* Grid skeleton — 9 cards covering all phone screen sizes */}
+      {/* Grid skeleton — 3x3 layout covering all phone screen sizes */}
       <View style={s.grid}>
-        {[0, 1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
-          <View key={i} style={s.cardWrap}>
-            <View style={s.card}>
-              <SkeletonBlock width={52} height={52} borderRadius={Radius.md} />
-              <SkeletonBlock width="70%" height={12} borderRadius={Radius.sm} />
-            </View>
+        {skeletonRows.map((row, rowIndex) => (
+          <View key={rowIndex} style={s.row}>
+            {row.map((i) => (
+              <View key={i} style={s.cardWrap}>
+                <View style={s.card}>
+                  <SkeletonBlock width={48} height={48} borderRadius={Radius.md} />
+                  <SkeletonBlock width="75%" height={12} borderRadius={Radius.sm} />
+                </View>
+              </View>
+            ))}
           </View>
         ))}
       </View>
@@ -140,22 +149,25 @@ const s = StyleSheet.create({
     marginBottom: Spacing.base,
   },
   grid: {
+    gap: Spacing.md,
+  },
+  row: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
     gap: Spacing.md,
   },
   cardWrap: {
-    width: CARD_W,
+    flex: 1,
     borderRadius: Radius.lg,
     backgroundColor: Brand.white,
     borderWidth: 1,
     borderColor: Brand.borderLight,
-    padding: Spacing.sm,
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.xs,
   },
   card: {
     alignItems: 'center',
+    justifyContent: 'center',
     gap: Spacing.sm,
-    paddingVertical: Spacing.sm,
   },
   horizontalRow: {
     gap: Spacing.md,

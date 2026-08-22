@@ -9,10 +9,12 @@ import '@/global.css';
 import { Redirect, Stack, usePathname, useRouter } from 'expo-router';
 import { useEffect } from 'react';
 import * as SplashScreen from 'expo-splash-screen';
-import { BackHandler, LogBox, View } from 'react-native';
+import { AppState, BackHandler, LogBox, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
+import { socketManager } from '@/lib/socket';
+import { CustomerNotificationProvider } from '@/components/notifications/CustomerNotificationProvider';
+import { CompulsoryReviewProvider } from '@/components/review/CompulsoryReviewProvider';
 
 LogBox.ignoreLogs([
   'Cannot connect to Expo CLI',
@@ -46,41 +48,53 @@ function GlobalBackHandler() {
 }
 
 function AuthenticatedLocationModal() {
-  const user = useAuthStore(s => s.user);
+  const user = useAuthStore((s) => s.user);
   if (!user) return null;
   return <LocationSearchModal />;
 }
 
-import { CustomerNotificationProvider } from '@/components/notifications/CustomerNotificationProvider';
+function GlobalAppStateSync() {
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (nextAppState) => {
+      if (nextAppState === 'active') {
+        console.log('[GlobalAppStateSync] Customer app resumed -> reconnecting socket & invalidating queries');
+        socketManager.connect();
+        queryClient.invalidateQueries();
+      }
+    });
+    return () => sub.remove();
+  }, []);
+  return null;
+}
 
 export default function RootLayout() {
-  const hydrateSession = useAuthStore(s => s.hydrateSession);
-  
+  const hydrateSession = useAuthStore((s) => s.hydrateSession);
+
   useEffect(() => {
-    const timer = setTimeout(() => {
-      hydrateSession();
-    }, 0);
-    return () => clearTimeout(timer);
+    hydrateSession();
   }, [hydrateSession]);
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <QueryClientProvider client={queryClient}>
+        <GlobalAppStateSync />
         <CustomerNotificationProvider>
-          <BottomSheetModalProvider>
-            <GluestackUIProvider mode="light">
-              <LocationProvider>
-                <GlobalBackHandler />
-                <AnimatedSplashOverlay />
-                <Stack screenOptions={{ headerShown: false }}>
-                  <Stack.Screen name="login" />
-                  <Stack.Screen name="otp" />
-                  <Stack.Screen name="index" />
-                </Stack>
-                <AuthenticatedLocationModal />
-              </LocationProvider>
-            </GluestackUIProvider>
-          </BottomSheetModalProvider>
+          <CompulsoryReviewProvider>
+            <BottomSheetModalProvider>
+              <GluestackUIProvider mode="light">
+                <LocationProvider>
+                  <GlobalBackHandler />
+                  <AnimatedSplashOverlay />
+                  <Stack screenOptions={{ headerShown: false }}>
+                    <Stack.Screen name="login" />
+                    <Stack.Screen name="otp" />
+                    <Stack.Screen name="index" />
+                  </Stack>
+                  <AuthenticatedLocationModal />
+                </LocationProvider>
+              </GluestackUIProvider>
+            </BottomSheetModalProvider>
+          </CompulsoryReviewProvider>
         </CustomerNotificationProvider>
       </QueryClientProvider>
     </GestureHandlerRootView>

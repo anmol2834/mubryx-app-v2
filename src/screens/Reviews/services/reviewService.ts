@@ -7,6 +7,9 @@
 
 import { CURRENT_USER_ID, MOCK_COMPLETED_SERVICES, MOCK_MY_REVIEWS, MOCK_PERSONAL_STATS } from '../mock/data';
 import type { CompletedService, FilterOption, MyReview, PersonalStats, ReviewTag } from '../mock/types';
+import { apiFetch } from '@/services/apiClient';
+import { mapReview } from '@/mappers/serviceMapper';
+import { ServiceReviewModel } from '@/types/review';
 
 export interface SubmitReviewPayload {
   bookingId: string;
@@ -91,6 +94,32 @@ export function applyFilter(reviews: MyReview[], filter: FilterOption): MyReview
     case 'recent':
     default: return [...reviews]; // already sorted newest-first in mock
   }
+}
+
+// GET /api/v1/services/:serviceId/reviews
+export async function fetchServiceReviews(
+  serviceId: string,
+  page = 1,
+  limit = 10,
+): Promise<{ reviews: ServiceReviewModel[]; hasMore: boolean; total: number; page: number }> {
+  try {
+    const res = await apiFetch<any>(`/services/${serviceId}/reviews?page=${page}&limit=${limit}`, { method: 'GET' });
+    if (res.ok && res.data) {
+      const list = Array.isArray(res.data) ? res.data : (res.data.reviews || []);
+      const total = typeof res.data.total === 'number' ? res.data.total : list.length;
+      const hasMore = Boolean(res.data.hasMore);
+      const pageNum = typeof res.data.page === 'number' ? res.data.page : page;
+      return {
+        reviews: list.map(mapReview),
+        hasMore,
+        total,
+        page: pageNum,
+      };
+    }
+  } catch (err) {
+    console.warn('[reviewService] Failed to fetch service reviews:', err);
+  }
+  return { reviews: [], hasMore: false, total: 0, page: 1 };
 }
 
 export { CURRENT_USER_ID };

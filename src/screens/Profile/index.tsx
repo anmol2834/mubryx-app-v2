@@ -21,7 +21,7 @@ const Divider = memo(function Divider() {
 });
 
 interface Props {
-  onNavigateToTrack?: () => void;
+  onNavigateToTrack?: (bookingId?: string) => void;
 }
 
 export const ProfileScreen = memo(function ProfileScreen({ onNavigateToTrack }: Props) {

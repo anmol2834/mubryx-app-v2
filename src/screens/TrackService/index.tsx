@@ -1,8 +1,9 @@
 import { Brand } from '@/constants/brand';
 import { memo, useCallback } from 'react';
-import { Alert, RefreshControl, ScrollView, StatusBar, StyleSheet, View } from 'react-native';
+import { Alert, Linking, RefreshControl, ScrollView, StatusBar, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MOCK_ACTIVE_BOOKING, type ActiveBooking } from '../Profile/constants';
+import { bookingService } from '@/services/bookingService';
 import { BookingStatusCard } from './components/BookingStatusCard';
 import { EngineerCard } from './components/EngineerCard';
 import { ServiceDetailsCard } from './components/ServiceDetailsCard';
@@ -34,13 +35,57 @@ export const TrackServiceScreen = memo(function TrackServiceScreen({
     Alert.alert('Live Location', 'Live map integration coming soon.');
   }, []);
 
-  const handleCall = useCallback(() => {
-    Alert.alert('Call Engineer', `Calling ${booking.engineer?.name ?? 'engineer'}...`);
-  }, [booking.engineer]);
+  const getPhone = useCallback(async (): Promise<string | null> => {
+    let rawPhone =
+      booking?.engineer?.phone ||
+      (booking?.engineer as any)?.phoneNumber ||
+      (booking as any)?.technician?.phone ||
+      (booking as any)?.technician?.user?.phone;
 
-  const handleChat = useCallback(() => {
-    Alert.alert('Chat', 'Chat feature coming soon.');
-  }, []);
+    if (rawPhone) return String(rawPhone);
+
+    const targetBookingId = booking?.id || booking?.bookingId;
+    if (targetBookingId) {
+      try {
+        const res = await bookingService.getBookingById(targetBookingId);
+        if (res.ok && res.data) {
+          const tech = (res.data as any).technician || (res.data as any).engineer;
+          const fetchedPhone = tech?.phone || tech?.user?.phone;
+          if (fetchedPhone) return String(fetchedPhone);
+        }
+      } catch {
+        // silent fallback
+      }
+    }
+    return null;
+  }, [booking]);
+
+  const handleCall = useCallback(async () => {
+    const rawPhone = await getPhone();
+    if (!rawPhone) {
+      Alert.alert('Phone Call', 'Technician phone number is not available at the moment.');
+      return;
+    }
+    const cleanPhone = String(rawPhone).replace(/[^\d+]/g, '');
+    const telUrl = `tel:${cleanPhone}`;
+    Linking.openURL(telUrl).catch(() => {
+      Alert.alert('Call Error', `Unable to open dialer for ${cleanPhone}`);
+    });
+  }, [getPhone]);
+
+  const handleChat = useCallback(async () => {
+    const rawPhone = await getPhone();
+    if (!rawPhone) {
+      Alert.alert('WhatsApp Chat', 'Technician phone number is not available for WhatsApp chat.');
+      return;
+    }
+    const cleanDigits = String(rawPhone).replace(/\D/g, '');
+    const formattedPhone = cleanDigits.length === 10 ? `91${cleanDigits}` : cleanDigits;
+    const whatsappUrl = `https://wa.me/${formattedPhone}?text=${encodeURIComponent('Hello, regarding my booking on Mubryx.')}`;
+    Linking.openURL(whatsappUrl).catch(() => {
+      Alert.alert('WhatsApp Error', 'Could not open WhatsApp on this device.');
+    });
+  }, [getPhone]);
 
   const handleHelp = useCallback(() => {
     Alert.alert('Help', 'Support team will contact you shortly.');
